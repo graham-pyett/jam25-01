@@ -18,3 +18,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JAM25_01 }}
           channelId: live
           projectId: jam25-01
+          entryPoint: './jam-25'
