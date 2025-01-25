@@ -1,27 +1,25 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
-import App from './App';
+
 import reportWebVitals from './reportWebVitals';
-import { initializeApp } from 'firebase/app';
+import App from './routes/App';
+import { UserProvider } from './providers/UserProvider';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDj7ed5OSpjhYAG9l4dUy2IbrDni7OzPyc",
-  authDomain: "jam25-01.firebaseapp.com",
-  projectId: "jam25-01",
-  storageBucket: "jam25-01.firebasestorage.app",
-  messagingSenderId: "299605901933",
-  appId: "1:299605901933:web:d05643a24d58f543087564"
-};
-
-// Initialize Firebase
-// eslint-disable-next-line no-unused-vars
-const app = initializeApp(firebaseConfig);
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <App />,
+  },
+]);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <UserProvider>
+      <RouterProvider router={router} />
+    </UserProvider>
   </React.StrictMode>
 );
 
