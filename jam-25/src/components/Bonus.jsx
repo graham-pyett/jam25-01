@@ -1,10 +1,16 @@
-import React from "react";
+import { Box } from "@mui/material";
+import React, { useMemo } from "react";
+import { BONUSES } from "../upgrades";
 
-const Bonus = () => {
+const Bonus = ({ bonus }) => {
+  const bon = useMemo(() => BONUSES[bonus] ?? bonus, [bonus]);
+  if (!bon) {
+    return null;
+  }
   return (
-    <div>
-      <h1>Bonus</h1>
-    </div>
+    <Box sx={{ ...bon.style, width: 'calc(100% + 6px)', height: 'calc(100% + 6px)', borderRadius: 2, boxSizing: 'border-box', position: 'absolute', top: -3, left: -3, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, color: 'white' }}>
+      {bon.text}
+    </Box>
   );
 };
 

@@ -1,13 +1,15 @@
 import { Box, Typography } from "@mui/material";
 import React from "react";
 
-const Score = ({ score, target }) => {
+const Score = ({ score, target, round }) => {
   return (
-    <Box sx={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', width: 500, mt: 2, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', p: 2, borderRadius: '8px', border: '1px solid slategrey', backgroundColor: 'whitesmoke', minHeight: 70, boxSizing: 'border-box' }}>
+    <Box sx={{ width: 500, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2, borderRadius: '8px', border: '1px solid slategrey', backgroundColor: 'whitesmoke', minHeight: 70 }}>
       <Box>
+        <Typography variant='overline'>Round {round}</Typography>
         <Typography variant='h4'>{score}</Typography>
       </Box>
-      <Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography variant='overline'>Target</Typography>
         <Typography variant='h6'>{target}</Typography>
       </Box>
     </Box>

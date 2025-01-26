@@ -1,14 +1,12 @@
 import { Box } from "@mui/material";
 import React, { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import Bonus from "./Bonus";
 
-const Space = ({ tile, id, bonus }) => {
+const InventoryTile = ({ tile, id, bonus }) => {
   const { isOver, setNodeRef } = useDroppable({
     id,
-    disabled: !!tile,
     data: {
-      accepts: ['tile', 'bonus.board'],
+      accepts: ['tile', 'bonus.tile'],
     }
   });
 
@@ -21,12 +19,9 @@ const Space = ({ tile, id, bonus }) => {
 
   return (
     <Box sx={{ width: '50px', height: '50px', border: '1px solid lightgrey', backgroundColor: color, position: 'relative' }} ref={setNodeRef}>
-      {
-        bonus && <Bonus bonus={bonus} />
-      }
       {tile}
     </Box>
   );
 };
 
-export default Space;
+export default InventoryTile;
