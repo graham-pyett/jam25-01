@@ -14,13 +14,13 @@ const Space = ({ tile, id, bonus }) => {
 
   const color = useMemo(() => {
     if (isOver) {
-      return 'lightblue';
+      return 'rgba(58, 171, 189, 0.7)';
     }
-    return 'white';
+    return 'rgba(32, 53, 212, 0.2)';
   }, [isOver]);
 
   return (
-    <Box sx={{ width: '50px', height: '50px', border: '1px solid lightgrey', backgroundColor: color, position: 'relative' }} ref={setNodeRef}>
+    <Box sx={{ width: '50px', height: '50px', border: '1px solid rgba(32, 53, 212, 0.4)', backgroundColor: color, position: 'relative' }} ref={setNodeRef}>
       {
         bonus && <Bonus bonus={bonus} />
       }

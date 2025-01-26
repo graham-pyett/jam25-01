@@ -9,7 +9,7 @@ const InventoryItem = ({ item }) => {
     <Box
       ref={setNodeRef}
       key={item.key}
-      sx={{ width: 50, height: 50, position: 'relative', mr: 1, zIndex: 3 }}
+      sx={{ touchAction: 'none', width: 50, height: 50, position: 'relative', mr: 1, zIndex: 3 }}
       {...listeners}
       {...attributes}
     >

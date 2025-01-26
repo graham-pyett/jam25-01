@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography } from '@mui/material';
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
 import Score from "../components/Score";
 import Grid from "../components/Grid";
 import Tray from "../components/Tray";
@@ -49,6 +49,7 @@ const TARGETS = [
 ];
 
 const App = () => {
+  const  matches = useMediaQuery('(max-width: 900px)');
   const { blanks, setBlanks, setFixedTiles, fixedTiles } = useGameData();
   const [tilesToDraw, setTilesToDraw] = useState(13);
   const [gridSizeY, setGridSizeY] = useState(7);
@@ -536,7 +537,7 @@ const App = () => {
 
   if (!gameStarted) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', p: 2, boxSizing: 'border-box' }}>
         <Box sx={{ fontSize: '24px', mt: 4 }}>
           Welcome to the game!
         </Box>
@@ -601,14 +602,14 @@ const App = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
               {availableJokers.map((u) => (
-                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', p: 2, m: 2, maxWidth: '30%' }}>
+                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', p: 2, m: matches ? 1 : 2, maxWidth: '30%' }}>
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
                   <Joker joker={u} id={u.id} />
-                  <Typography variant='h6'>{u.name}</Typography>
-                  <Typography variant='body1' sx={{ textAlign: 'center' }}>{u.description}</Typography>
-                  <Typography variant='body1'>Price: ${u.price}</Typography>
+                  <Typography variant='h6' sx={{ fontSize: matches ? 18 : 20 }}>{u.name}</Typography>
+                  <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{u.description}</Typography>
+                  <Typography variant='body1' sx={{ color: 'goldenrod' }}>Price: ${u.price}</Typography>
                   <Button disabled={u.disabled || funds < u.price || jokers.length >= maxJokers} onClick={() => {
                     if (funds >= u.price) {
                       setFunds((old) => old - u.price);
@@ -645,9 +646,9 @@ const App = () => {
           </Box>
           <Typography variant='overline'>Available Tiles</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
+            <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: matches ? -1 : -2 }}>	
               {availableUpgradeTiles.map((u) => (
-                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', p: 2, m: 2, ...u.style }}>
+                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', p: matches ? 1 : 2, m: matches ? 0 : 2, ...u.style }}>
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
@@ -692,7 +693,7 @@ const App = () => {
                   ))
                 }
               </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', scale: matches ? 0.75 : 1 }}>
                 <Edge side="top" />
                 <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                   <Edge side="left" />
@@ -726,17 +727,19 @@ const App = () => {
             <Score score={totalScore} target={target} round={round} />
             <Submit onSubmit={endTurn} />
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 120, left: '50%', transform: 'translateX(-50%)', p: 2, backgroundColor: 'oldlace', borderRadius: '8px', zIndex: 5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 120, left: '50%', transform: 'translateX(-50%)', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
             {
               Array(maxJokers).fill().map((_, i) => (
                 <JokerSpace key={i} joker={jokers[i] ?? null} />
               ))
             }
           </Box>
-          <Box sx={{ position: 'relative', top: 220 }}>
-            <Grid gridArray={gridArray} />
+          <Box sx={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', maxHeight: '40vh', overflow: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <Box sx={{ position: 'relative', scale: matches ? 0.75 : 1 }}>
+              <Grid gridArray={gridArray} />
+            </Box>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', mt: 4, position: 'fixed', bottom: 0, mb: 2, left: '50%', transform: 'translateX(-50%)' }}>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', bottom: 0, mb: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
             <InfoPanel bag={bag} swaps={swaps} turn={currentTurn} turns={turns} money={funds} />
             <Tray tiles={trayArray} />
             <Swapper tiles={swapArray} handleSwap={handleSwap} swaps={swaps} />

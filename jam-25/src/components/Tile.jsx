@@ -29,7 +29,7 @@ const Tile = ({ sx, letter, id }) => {
   return (
     <Box
       ref={setNodeRef}
-      sx={{ boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, ...sx }}
+      sx={{ touchAction: 'none', boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, ...sx }}
       {...listeners}
       {...attributes}
     >
