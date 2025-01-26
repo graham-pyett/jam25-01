@@ -51,7 +51,7 @@ const TARGETS = [
 const App = () => {
   const  matches = useMediaQuery('(max-width: 900px)');
   const { blanks, setBlanks, setFixedTiles, fixedTiles } = useGameData();
-  const [tilesToDraw, setTilesToDraw] = useState(13);
+  const tilesToDrawRef = useRef(13);
   const [gridSizeY, setGridSizeY] = useState(7);
   const [gridSizeX, setGridSizeX] = useState(7);
   const [gameStarted, setGameStarted] = useState(false);
@@ -127,7 +127,7 @@ const App = () => {
     const invalidScore = words[currentTurnRef.current].filter((w) => !w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
     let currentScore = validScore - invalidScore;
     jokers.forEach((j) => {
-      const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore });
+      const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore });
       currentScore = newScore;
       setFunds((old) => old + newMoney);
     });
@@ -136,16 +136,20 @@ const App = () => {
     return turnScores.current.reduce((acc, s) => acc + s, 0);
   }, [gridArray, jokers, scoreWord, words]);
 
-  const start = useCallback(() => {
+  const getGlobalJokers = useCallback(() => {
+    return jokers.filter((j) => j.props?.joker?.global);
+  }, [jokers]);
 
+  const start = useCallback(() => {
+    const ttd = tilesToDrawRef.current + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.draws ?? 0, 0);
     const newAllTiles = shuffle(tileLibrary.current).map((l) => <Tile key={l.id} letter={l} id={l.id} />);
-    const drawn = newAllTiles.slice(0, tilesToDraw);
-    setBag(newAllTiles.length - tilesToDraw);
+    const drawn = newAllTiles.slice(0, ttd);
+    setBag(newAllTiles.length - ttd);
     setAvailableTiles(drawn);
-    setAllTiles(newAllTiles.slice(tilesToDraw));
+    setAllTiles(newAllTiles.slice(ttd));
     setTrayArray(drawn);
-    setTurns(3);
-    setSwaps(3);
+    setTurns(3 + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.turns ?? 0, 0));
+    setSwaps(3 + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.swaps ?? 0, 0));
     setSwapArray([]);
     currentTurnRef.current = 0;
     setCurrentTurn(1)
@@ -161,7 +165,7 @@ const App = () => {
       });
       return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
     })));
-  }, [gridSizeY, gridSizeX, round, tilesToDraw]);
+  }, [getGlobalJokers, round, gridSizeY, gridSizeX]);
 
   const checkForWords = useCallback(() => {
     // find all words on the board
@@ -241,7 +245,7 @@ const App = () => {
     currentTurnRef.current++;
     if (newTotalScore < target && currentTurnRef.current < turns) {
       setCurrentTurn((old) => old + 1);
-      const ttd = tilesToDraw - trayArray.length - swapArray.length;
+      const ttd = (tilesToDrawRef.current + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.draws ?? 0, 0)) - trayArray.length - swapArray.length;
       const drawn = allTiles.slice(0, ttd);
       setBag(allTiles.length - ttd);
       const newTray = [...trayArray, ...swapArray, ...drawn];
@@ -269,7 +273,7 @@ const App = () => {
         setGameOver(true);
       }
     }
-  }, [allTiles, checkForWords, gridArray, score, setBlanks, setFixedTiles, swapArray, target, tilesToDraw, trayArray, turns]);
+  }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBlanks, setFixedTiles, swapArray, target, trayArray, turns]);
 
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
@@ -503,7 +507,7 @@ const App = () => {
     setGridSizeY(newGridSize);
     setGridSizeY(newGridSize);
     setInventory([]);
-    setTilesToDraw(13);
+    tilesToDrawRef.current = 13;
     setGameOver(false);
     setRound(0);
     setJokers([]);
@@ -538,26 +542,26 @@ const App = () => {
   if (!gameStarted) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', p: 2, boxSizing: 'border-box' }}>
-        <Box sx={{ fontSize: '24px', mt: 4 }}>
-          Welcome to the game!
+        <Box className="glow" sx={{ fontSize: '56px', mt: 4, textAlign: 'center', fontFamily: '"Mystery Quest", serif', fontWeight: 400, color: 'white' }}>
+          Glyphoria
         </Box>
-        <Box sx={{ fontSize: '18px', mt: 2 }}>
-          The object of the game is to make a crossword grid on the board with a high enough total score to beat the target.
+        <Box sx={{ fontSize: '18px', mt: 2, textAlign: 'center' }}>
+          The object of the game is to make a crossword grid on the board with a high enough total score to beat the target.<br /><strong>Words must be left-to-right or top-to-bottom</strong>.
         </Box>
-        <Box sx={{ fontSize: '18px', mt: 1, color: 'tomato' }}>
+        <Box sx={{ fontSize: '18px', mt: 1, color: 'tomato', textAlign: 'center' }}>
           WARNING: Invalid words will be penalized!
         </Box>
-        <Box sx={{ fontSize: '18px', mt: 1 }}>
+        <Box sx={{ fontSize: '18px', mt: 1, textAlign: 'center' }}>
           You have 3 turns to attempt this. Each turn will give you more letters.
         </Box>
-        <Box sx={{ fontSize: '18px', mt: 1 }}>
+        <Box sx={{ fontSize: '18px', mt: 1, textAlign: 'center' }}>
           After each round you will earn money which you can spend in the shop to buy upgrades for the following rounds.
         </Box>
-        <Box sx={{ fontSize: '18px', mt: 2 }}>
+        <Box sx={{ fontSize: '18px', mt: 2, textAlign: 'center' }}>
           Click the button below to start the game.
         </Box>
         <Box sx={{ mt: 4 }}>
-          <Button onClick={() => { start(); setGameStarted(true); }}>
+          <Button className="button" variant="contained" onClick={() => { start(); setGameStarted(true); } }>
             Start Game
           </Button>
         </Box>
@@ -582,7 +586,7 @@ const App = () => {
      
           </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-            <Button onClick={handleOpenShop}>Open Shop</Button>
+            <Button className="button" variant="contained" onClick={handleOpenShop}>Open Shop</Button>
           </Box>
         </DialogContent>
       </Dialog>
@@ -668,7 +672,7 @@ const App = () => {
             </Box>
           </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-            <Button onClick={handlePlacement}>{inventory.length ? 'Continue' : 'Next Round'}</Button>
+            <Button className="button" variant="contained" onClick={handlePlacement}>{inventory.length ? 'Continue' : 'Next Round'}</Button>
           </Box>
         </DialogContent>
       </Dialog>
@@ -704,7 +708,7 @@ const App = () => {
               </Box>
           </DndContext>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-            <Button onClick={handleNextRound}>Next Round</Button>
+            <Button className="button" variant="contained" onClick={handleNextRound}>Next Round</Button>
           </Box>
         </DialogContent>
       </Dialog>
@@ -715,7 +719,7 @@ const App = () => {
             <Box sx={{ fontSize: '24px', mt: 2 }}>Game Over!</Box>
             <Box sx={{ fontSize: '24px', mt: 2, color: 'tomato' }}>Total Score: {totalScore}/{target}</Box>
             <Box sx={{ mt: 2 }}>
-              <Button onClick={handleGameOver}>Start Over</Button>
+              <Button className="button" variant="contained" onClick={handleGameOver}>Start Over</Button>
             </Box>
           </Box>
         </DialogContent>

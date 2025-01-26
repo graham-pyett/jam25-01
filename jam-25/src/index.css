@@ -17,3 +17,29 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 4px #fff, 0 0 6px #fff, 0 0 8px #e60073, 0 0 10px #e60073, 0 0 12px #e60073, 0 0 14px #e60073, 0 0 16px #e60073;
+  }
+  
+  to {
+    text-shadow: 0 0 8px #fff, 0 0 12px #ff4da6, 0 0 16px #ff4da6, 0 0 20px #ff4da6, 0 0 24px #ff4da6, 0 0 28px #ff4da6, 0 0 32px #ff4da6;
+  }
+}
+
+.glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+
+.button {
+  background: rgb(72,14,102);
+  background: linear-gradient(338deg, rgba(72,14,102,0.8509904450061274) 0%, rgba(224,75,232,0.7641557111125701) 100%);
+  font-family: "Mystery Quest", serif!important;
+  text-transform: unset!important;
+  font-size: 16px!important;
+  font-weight: 400;
+  color: white;
+}
