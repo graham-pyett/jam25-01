@@ -1,10 +1,10 @@
-import { Box } from "@mui/material";
+import { Box, Tooltip } from "@mui/material";
 import React, { useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { useGameData } from "../providers/GameDataProvider";
 
 const Tile = ({ sx, letter, id }) => {
-  const { blanks, fixedTiles } = useGameData();
+  const { blanks, fixedTiles, scoringTiles } = useGameData();
   const { attributes, listeners, setNodeRef } = useDraggable({ id, disabled: fixedTiles?.includes(id), data: { type: 'tile' } });
   const displayedLetter = useMemo(() => blanks?.[id] ?? letter.letter, [blanks, id, letter.letter]);
 
@@ -33,18 +33,20 @@ const Tile = ({ sx, letter, id }) => {
       {...listeners}
       {...attributes}
     >
-      {
-        (letter.multiplier || letter.adder) && (
-          <Box sx={{ position: 'absolute', top: 1, left: 4, fontSize: '10px', color: letter.adder ? '#4fdb82' : '#c9402a' }}>
-            {letter.adder ? `+${letter.adder}` : `x${letter.multiplier}`}
-          </Box>
-        )
-      }
+      <Tooltip arrow open={!!scoringTiles?.find((t) => t.id === id)} title={<span style={{ color: scoringTiles?.find((t) => t.id === id)?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>{scoringTiles?.find((t) => t.id === id)?.score >= 0 ? '+' : ''} {scoringTiles?.find((t) => t.id === id)?.score ?? ''}</span>} placement={scoringTiles?.find((t) => t.id === id)?.placement}>
+        {
+          (letter.multiplier || letter.adder) && (
+            <Box sx={{ position: 'absolute', top: 1, left: 4, fontSize: '10px', color: letter.adder ? '#4fdb82' : '#c9402a' }}>
+              {letter.adder ? `+${letter.adder}` : `x${letter.multiplier}`}
+            </Box>
+          )
+        }
 
-      {displayedLetter}
-      <Box sx={{ position: 'absolute', bottom: 1, right: 4, fontSize: '10px' }}>
-        {letter.value}
-      </Box>
+        {displayedLetter}
+        <Box sx={{ position: 'absolute', bottom: 1, right: 4, fontSize: '10px' }}>
+          {letter.value}
+        </Box>
+      </Tooltip>
     </Box>
   );
 };

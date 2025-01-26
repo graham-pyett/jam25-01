@@ -5,13 +5,15 @@ const GameDataContext = createContext(null);
 const GameDataProvider = ({ children }) => {
   const [blanks, setBlanks] = useState({});
   const [fixedTiles, setFixedTiles] = useState([]);
+  const [scoringTiles, setScoringTiles] = useState([]);
 
   const value = useMemo(() => {
     return {
       blanks, setBlanks,
-      fixedTiles, setFixedTiles
+      fixedTiles, setFixedTiles,
+      scoringTiles, setScoringTiles
     };
-  }, [blanks, fixedTiles]);
+  }, [blanks, fixedTiles, scoringTiles]);
 
   return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
 };
