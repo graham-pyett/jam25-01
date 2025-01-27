@@ -18,7 +18,7 @@ const InventoryTile = ({ tile, id, bonus }) => {
   }, [isOver]);
 
   return (
-    <Box sx={{ width: '50px', height: '50px', border: '1px solid lightgrey', backgroundColor: color, position: 'relative' }} ref={setNodeRef}>
+    <Box key={id} sx={{ width: '50px', height: '50px', border: '1px solid lightgrey', backgroundColor: color, position: 'relative' }} ref={setNodeRef}>
       {tile}
     </Box>
   );

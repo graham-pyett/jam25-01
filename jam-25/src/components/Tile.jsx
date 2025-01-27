@@ -35,20 +35,28 @@ const Tile = ({ sx, letter, id }) => {
       {...attributes}
     >
       {
-        (letter.multiplier) && (
-          <Box sx={{ position: 'absolute', top: 0, left: 0, fontSize: '10px', color: 'black', backgroundColor: '#4dd3eb', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+        letter.multiplier ? (
+          <Box sx={{ position: 'absolute', top: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: letter.scope === 'word' ? '#b02bb5' : '#11adab', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
             {`x${letter.multiplier}`}
           </Box>
-        )
+        ) : null
       }
-      <Tooltip arrow placement="top" title={letter.multiplier && (
-        <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Typography variant='h6'>{letter.letter}</Typography>
-          <Typography variant='body2'>`x${letter.multiplier} ${letter.value}` points</Typography>
-        </Box>
-      )}>
-        {displayedLetter}
-      </Tooltip>
+      {
+        letter.multiplier ? (
+          <Tooltip arrow placement="top" title={(
+            <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Typography variant='h6'>{letter.letter}</Typography>
+              <Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} points` : `${letter.multiplier} x word score`}</Typography>
+            </Box>
+          )}>
+            <span>
+              {displayedLetter}
+            </span>
+          </Tooltip>
+        ) : (<span>
+          {displayedLetter}
+        </span>)
+      }
       <Box sx={{ position: 'absolute', bottom: displayedLetter.length > 2 ? -1 : 1, right: 4, fontSize: '10px', fontFamily: 'Orbitron' }}>
         {letter.value}
       </Box>

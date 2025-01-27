@@ -6,13 +6,14 @@ import { firestore } from "../firebaseSetup/firebase";
 const UserContext = createContext(null);
 
 const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({ didTour: false });
   const [didTour, setDidTourRaw] = useState(JSON.parse(localStorage.getItem('didTour') ?? 'false'));
 
   const setDidTour = useCallback((value) => {
     setDidTourRaw(value);
+    setUser({ ...user, didTour: value });
     localStorage.setItem('didTour', JSON.stringify(value));
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const unregisterAuthObserver = auth.onAuthStateChanged((user) => {
@@ -23,7 +24,7 @@ const UserProvider = ({ children }) => {
           }
         });
       } else {
-        setUser({});
+        setUser({ didTour: false });
       }
     });
 

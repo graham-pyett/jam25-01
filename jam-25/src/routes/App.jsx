@@ -142,7 +142,7 @@ const App = () => {
       const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
       const delta = newScore - currentScore;
       scoreTimeouts.current.push(setTimeout(() => {
-        setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom' }]);
+        setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0 }]);
         setTurnScore((old) => (old ?? 0) + delta);
         setTimeout(() => {
           setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id));
@@ -362,13 +362,14 @@ const App = () => {
       const newTile = { ...tile, ...upgrade, value: tile.value + upgrade.adder, id: tile.id };
       tileLibrary.current = tileLibrary.current.filter((t) => t.id !== tile.id);
       tileLibrary.current.push(newTile);
+      setInventory((old) => old.filter((t) => t.props.item.id !== upgrade.id));
       return newTile;
     }
     return tile;
   }, []);
 
   const handleDragInventoryEnd = useCallback((event) => {
-    if (event.over?.id && event.over.id >=0 && event.over.id < 7 && activeInventory.props.item.placement === 'tile') {
+    if (event.over?.id != null && event.over.id >=0 && event.over.id < 7 && activeInventory.props.item.placement === 'tile') {
       setPossibleLetters((old) => old.map((l, i) => {
         if (i === parseInt(event.over.id)) {
           const newTile = handleUpgrade(l.props.letter, activeInventory.props.item);
@@ -475,7 +476,7 @@ const App = () => {
     const key = keys[Math.floor(Math.random() * keys.length)];
     const bonusKeys = Object.keys(BONUSES).filter((b) => BONUSES[b].placement === 'tile');
     const bonusKey = bonusKeys[Math.floor(Math.random() * bonusKeys.length)];
-    newAvailableUpgradeTiles.push({ key, ...BONUSES[bonusKey], ...BONUS_LETTERS[key], name: `${BONUSES[bonusKey].name} - ${BONUS_LETTERS[key].letter}`, price: Math.floor((BONUS_LETTERS[key].price ?? BONUS_LETTERS[key].value + BONUSES[bonusKey].price) / 2), id: v4() });
+    newAvailableUpgradeTiles.push({ key, ...BONUSES[bonusKey], ...BONUS_LETTERS[key], value: (BONUSES[bonusKey].adder ?? 0) + BONUS_LETTERS[key].value, name: `${BONUSES[bonusKey].name} - ${BONUS_LETTERS[key].letter}`, price: Math.floor((BONUS_LETTERS[key].price ?? BONUS_LETTERS[key].value) - 2 + BONUSES[bonusKey].price), id: v4() });
     const newAvailableJokers = [];
     for (let i = 0; i < 2; i++) {
       const keys = Object.keys(JOKERS);
@@ -596,10 +597,11 @@ const App = () => {
       content: "If you don't like your letters, you can swap tiles from your tray for new ones. You have 3 swaps per round.",
     },
     {
-      selector: '.inventory',
       content: 'After each successful round you can buy upgrades in the shop. You can also buy jokers to help you increase your score.',
     },
   ], []);
+
+  const shouldTour = useMemo(() => !user?.didTour, [user]);
 
   if (!gameStarted) {
     return (
@@ -642,14 +644,14 @@ const App = () => {
         <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Round Over</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ fontSize: '24px', mt: 2 }}>Round {round} Over</Box>
-            <Box sx={{ fontSize: '24px', mt: 2, color: 'seagreen' }}>Total Score: {totalScore}/{target}</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, fontFamily: 'Orbitron' }}>Round {round} Defeated!</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, color: '#11adab', fontFamily: 'Orbitron' }}>Total Score: {totalScore}/{target}</Box>
       
-              <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Money Earned:</span><span>+${getNewFunds().total}</span></Box>
+              <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Money Earned:</span><span>+${getNewFunds().total}</span></Box>
               <Divider />
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Base:</span><span>+${getNewFunds().base}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Remaining Turns:</span><span>+${getNewFunds().turns}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Word bonus:</span><span>+${getNewFunds().words}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Base:</span><span>+${getNewFunds().base}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Remaining Turns:</span><span>+${getNewFunds().turns}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Word bonus:</span><span>+${getNewFunds().words}</span></Box>
      
           </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
@@ -659,9 +661,9 @@ const App = () => {
       </Dialog>
       <Dialog open={shopOpen}>
         <DialogTitle sx={{ fontFamily: 'Orbitron' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Typography variant='h5'>Shop!</Typography>
-            <Typography variant='h5' sx={{ color: 'goldenrod' }}>${funds}</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', fontFamily: 'Orbitron' }}>
+            <Typography variant='h5' sx={{ fontFamily: 'Orbitron' }}>Shop!</Typography>
+            <Typography variant='h5' sx={{ color: 'goldenrod', fontFamily: 'Orbitron' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -673,15 +675,15 @@ const App = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
               {availableJokers.map((u) => (
-                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', p: 2, m: matches ? 1 : 2, maxWidth: '30%' }}>
+                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2, maxWidth: '30%' }}>
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
                   <Joker joker={u} id={u.id} />
-                  <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20 }}>{u.name}</Typography>
+                  <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20, fontFamily: 'Orbitron' }}>{u.name}</Typography>
                   <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{u.description}</Typography>
-                  <Typography variant='body1' sx={{ color: 'goldenrod' }}>Price: ${u.price}</Typography>
-                  <Button disabled={u.disabled || funds < u.price || jokers.length >= maxJokers} onClick={() => {
+                  <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', fontFamily: 'Orbitron' }}>Price: ${u.price}</Typography>
+                  <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || funds < u.price || jokers.length >= maxJokers} onClick={() => {
                     if (funds >= u.price) {
                       setFunds((old) => old - u.price);
                       setJokers((old) => [...old, <Joker joker={u} />]);
@@ -696,14 +698,14 @@ const App = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
               {availableUpgrades.map((u) => (
-                <Box key={u.id} sx={{ display: 'flex', width: '100%', flexDirection: 'column', alignItems: 'center', position: 'relative', p: 2, m: 2, ...u.style }}>
+                <Box key={u.id} sx={{ display: 'flex', width: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: 2, ...u.style }}>
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
-                  <Typography variant='h6'>{u.name}</Typography>
+                  <Typography variant='h6' sx={{ fontFamily: 'Orbitron' }}>{u.name}</Typography>
                   <Typography variant='body1' sx={{ textAlign: 'center' }}>{u.description}</Typography>
-                  <Typography variant='body1'>Price: ${u.price}</Typography>
-                  <Button disabled={u.disabled || funds < u.price} onClick={() => {
+                  <Typography variant='body1' sx={{ color: 'goldenrod', fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center', width: u.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Price: ${u.price}</Typography>
+                  <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || funds < u.price} onClick={() => {
                     if (funds >= u.price) {
                       setFunds((old) => old - u.price);
                       setInventory((old) => [...old, <InventoryItem item={u} />]);
@@ -719,15 +721,15 @@ const App = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: matches ? -1 : -2 }}>	
               {availableUpgradeTiles.map((u) => (
-                <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', p: matches ? 1 : 2, m: matches ? 0 : 2, ...u.style }}>
+                <Box key={u.id} sx={{ display: 'flex', width: u.description ? '100%' : 'auto', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: matches ? 1 : 2, m: matches ? 0 : 2, ...u.style }}>
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
                   <Tile letter={u} id={u.id} />
-                  { u.name && <Typography variant='h6'>{u.name}</Typography> }
+                  { u.name && <Typography variant='h6' sx={{ fontFamily: 'Orbitron' }}>{u.name}</Typography> }
                   { u.description && <Typography variant='body1' sx={{ textAlign: 'center' }}>{u.description}</Typography> }
-                  <Typography variant='body1'>Price: ${u.price}</Typography>
-                  <Button disabled={u.disabled || funds < u.price} onClick={() => {
+                  <Typography variant='body1' sx={{ color: 'goldenrod', fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center', width: u.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Price: ${u.price}</Typography>
+                  <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || funds < u.price} onClick={() => {
                     if (funds >= u.price) {
                       setFunds((old) => old - u.price);
                       tileLibrary.current.push(u);
@@ -806,7 +808,7 @@ const App = () => {
               ))
             }
           </Box>
-          <Box sx={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', maxHeight: '45vh', overflow: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <Box sx={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', display: 'flex', justifyContent: 'center', width: '100%' }}>
             <Box className="board" sx={{ position: 'relative', scale: matches ? 0.6 : 1 }}>
               <Grid gridArray={gridArray} />
             </Box>
@@ -821,12 +823,16 @@ const App = () => {
           </DragOverlay>
         </Box>
       </DndContext>
-      <Tour
-        steps={steps}
-        isOpen={!user?.didTour}
-        onRequestClose={() => setDidTour(true)}
-        accentColor="#ff4da6"
-      />
+      {
+        shouldTour && (
+          <Tour
+            steps={steps}
+            isOpen
+            onRequestClose={() => setDidTour(true)}
+            accentColor="#ff4da6"
+          />
+        )
+      }
     </>
     
   );
