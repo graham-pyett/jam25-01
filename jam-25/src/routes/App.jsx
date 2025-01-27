@@ -337,11 +337,13 @@ const App = () => {
         return c;
       })));
     } else if (event.over?.id && event.over.id === 'swapper') {
+      setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
       setSwapArray((old) => [...old, activeTile]);
     } else {
+      setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
       setTrayArray((old) => [...old, activeTile]);
     }
-  }, [activeTile]);
+  }, [activeTile, setBlanks]);
 
   
   const handleDragInventoryStart = useCallback((event) => {
