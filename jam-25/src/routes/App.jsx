@@ -148,8 +148,8 @@ const App = () => {
     setAvailableTiles(drawn);
     setAllTiles(newAllTiles.slice(ttd));
     setTrayArray(drawn);
-    setTurns(3 + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.turns ?? 0, 0));
-    setSwaps(3 + getGlobalJokers()?.reduce((acc, j) => acc + j.props?.joker?.global?.swaps ?? 0, 0));
+    setTurns(3 + getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.turns ?? 0), 0));
+    setSwaps(3 + getGlobalJokers()?.reduce((acc, j) => acc + (j.props?.joker?.global?.swaps ?? 0), 0));
     setSwapArray([]);
     currentTurnRef.current = 0;
     setCurrentTurn(1)
