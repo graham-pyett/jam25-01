@@ -794,7 +794,8 @@ const App = () => {
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
-          <Box sx={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', mt: 2 }}>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', top: 0, mt: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
+            <Box sx={{ width: matches ? '0' : 120, mr: matches ? 1 : 2 }} />
             <Score score={totalScore} target={target} round={round} turnScore={turnScore} />
             <Submit onSubmit={endTurn} />
           </Box>
@@ -806,7 +807,7 @@ const App = () => {
             }
           </Box>
           <Box sx={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', maxHeight: '45vh', overflow: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Box className="board" sx={{ position: 'relative', scale: matches ? 0.75 : 1 }}>
+            <Box className="board" sx={{ position: 'relative', scale: matches ? 0.6 : 1 }}>
               <Grid gridArray={gridArray} />
             </Box>
           </Box>
