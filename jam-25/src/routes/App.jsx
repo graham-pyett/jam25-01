@@ -129,7 +129,7 @@ const App = () => {
     jokers.forEach((j) => {
       const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
       currentScore = newScore;
-      setFunds((old) => old + newMoney);
+      setFunds((old) => old + (newMoney ?? 0));
     });
     turnScores.current[currentTurnRef.current] = currentScore;
     setTotalScore(turnScores.current.reduce((acc, s) => acc + s, 0));
@@ -149,7 +149,7 @@ const App = () => {
     setAllTiles(newAllTiles.slice(ttd));
     setTrayArray(drawn);
     setTurns(3 + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.turns ?? 0, 0));
-    setSwaps(3 + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.swaps ?? 0, 0));
+    setSwaps(3 + getGlobalJokers()?.reduce((acc, j) => acc + j.props?.joker?.global?.swaps ?? 0, 0));
     setSwapArray([]);
     currentTurnRef.current = 0;
     setCurrentTurn(1)
