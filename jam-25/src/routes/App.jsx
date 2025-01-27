@@ -824,6 +824,7 @@ const App = () => {
         steps={steps}
         isOpen={!user?.didTour}
         onRequestClose={() => setDidTour(true)}
+        accentColor="#ff4da6"
       />
     </>
     
