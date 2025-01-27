@@ -127,7 +127,7 @@ const App = () => {
     const invalidScore = words[currentTurnRef.current].filter((w) => !w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
     let currentScore = validScore - invalidScore;
     jokers.forEach((j) => {
-      const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: 0, newMoney: 0 };
+      const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
       currentScore = newScore;
       setFunds((old) => old + newMoney);
     });
