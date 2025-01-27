@@ -5,8 +5,32 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
 }
 
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: rgba(224,75,232,0.3);
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #ff4da6;
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #ff4da6;
+}
 
 
 
@@ -39,4 +63,8 @@ code {
   font-size: 16px!important;
   font-weight: 400;
   color: white;
+}
+
+.tile:hover, .inventory-item:hover {
+  cursor: pointer;
 }

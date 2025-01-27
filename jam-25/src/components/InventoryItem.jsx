@@ -7,6 +7,7 @@ const InventoryItem = ({ item }) => {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: item.id, data: { type: `bonus.${item.placement}` } });
   return (
     <Box
+      className="inventory-item"
       ref={setNodeRef}
       key={item.key}
       sx={{ touchAction: 'none', width: 50, height: 50, position: 'relative', mr: 1, zIndex: 3 }}
