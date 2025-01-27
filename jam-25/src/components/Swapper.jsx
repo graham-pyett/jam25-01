@@ -9,6 +9,7 @@ const Swapper = ({ tiles, handleSwap, swaps }) => {
   return (
     <Box ref={setNodeRef} sx={{ order: matches ? 2 : 3, position: 'relative', backgroundColor: '#564c59', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid ghostwhite', px: 2, py: 1, pb: 6, minHeight: matches ? 60 : 120, width: matches ? 'calc(60vw - 8px)' : 150, ml: matches ? 1 : 2, flexWrap: 'wrap' }}>
       {tiles}
+      <Box sx={{ position: 'absolute', top: '40%', left: '50%', width: 133, textAlign: 'center', transform: 'translate(-50%, -50%)', color: 'white', fontSize: 12, fontWeight: 'bold' }}>Drop Tiles here to Swap ({swaps} left)</Box>
       <Button className="button" disabled={swaps === 0} variant='contained' color='primary' sx={{ position: 'absolute', bottom: 8 }} onClick={handleSwap}><SwapCallsIcon /></Button>
     </Box>
   );

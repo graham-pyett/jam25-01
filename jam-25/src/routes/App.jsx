@@ -50,7 +50,7 @@ const TARGETS = [
 
 const App = () => {
   const  matches = useMediaQuery('(max-width: 900px)');
-  const { blanks, setBlanks, setFixedTiles, fixedTiles } = useGameData();
+  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles } = useGameData();
   const tilesToDrawRef = useRef(13);
   const [gridSizeY, setGridSizeY] = useState(7);
   const [gridSizeX, setGridSizeX] = useState(7);
@@ -76,6 +76,8 @@ const App = () => {
   const [blankPickerOpen, setBlankPickerOpen] = useState(false);
   const turnScores = useRef([]);
   const [totalScore, setTotalScore] = useState(0);
+  const [turnScore, setTurnScore] = useState(null);
+  const scoreTimeouts = useRef([]);
   const [round, setRound] = useState(0);
   const [roundOver, setRoundOver] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -119,8 +121,15 @@ const App = () => {
         baseScore *= b.multiplier === 0 ? 1 : b.multiplier;
       }
     });
+    scoreTimeouts.current.push(setTimeout(() => {
+      setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, placement: word.orientation === 'horizontal' ? 'left' : 'top' }]);
+      setTurnScore((old) => old + baseScore);
+      setTimeout(() => {
+        setScoringTiles((old) => old.filter((t) => t.id !== word.tiles[0]?.props?.id));
+      }, 1000);
+    }, scoreTimeouts.current.length * 500));
     return baseScore;
-  }, [gridArray]);
+  }, [gridArray, setScoringTiles]);
 
   const score = useCallback(() => {
     const validScore = words[currentTurnRef.current].filter((w) => w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
@@ -128,13 +137,22 @@ const App = () => {
     let currentScore = validScore - invalidScore;
     jokers.forEach((j) => {
       const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
+      const delta = newScore - currentScore;
+      scoreTimeouts.current.push(setTimeout(() => {
+        setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom' }]);
+        setTurnScore((old) => old + delta);
+        setTimeout(() => {
+          setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id));
+        }, 1000);
+      }, scoreTimeouts.current.length * 500));
       currentScore = newScore;
       setFunds((old) => old + (newMoney ?? 0));
     });
     turnScores.current[currentTurnRef.current] = currentScore;
-    setTotalScore(turnScores.current.reduce((acc, s) => acc + s, 0));
-    return turnScores.current.reduce((acc, s) => acc + s, 0);
-  }, [gridArray, jokers, scoreWord, words]);
+    // setTotalScore(turnScores.current.reduce((acc, s) => acc + s, 0));
+    const newTurnScore = turnScores.current.reduce((acc, s) => acc + s, 0)
+    return newTurnScore;
+  }, [gridArray, jokers, scoreWord, setScoringTiles, words]);
 
   const getGlobalJokers = useCallback(() => {
     return jokers.filter((j) => j.props?.joker?.global);
@@ -191,7 +209,7 @@ const App = () => {
         }
         if (wordTiles.length > 1 && isNew) {
           const valid = checkValidWord(word);
-          newFoundWords.push({ word, valid, score: scr, tiles: wordTiles });
+          newFoundWords.push({ word, valid, score: scr, tiles: wordTiles, orientation: 'horizontal' });
         }
       });
     });
@@ -216,7 +234,7 @@ const App = () => {
         }
         if (wordTiles.length > 1 && isNew) {
           const valid = checkValidWord(word);
-          newFoundWords.push({ word, valid, score: scr, tiles: wordTiles });
+          newFoundWords.push({ word, valid, score: scr, tiles: wordTiles, orientation: 'vertical' });
         }
       });
     }
@@ -224,7 +242,7 @@ const App = () => {
     gridArray.forEach((row, i) => {
       row.forEach((col, j) => {
         if (col.tile && !gridArray[i][j - 1]?.tile && !gridArray[i][j + 1]?.tile && !gridArray[i - 1]?.[j]?.tile && !gridArray[i + 1]?.[j]?.tile) {
-          newFoundWords.push({ word: col.tile.props.letter.letter, valid: false, score: col.tile.props.letter.value, tiles: [col.tile] });
+          newFoundWords.push({ word: col.tile.props.letter.letter, valid: false, score: col.tile.props.letter.value, tiles: [col.tile], orientation: 'vertical' });
         }
       });
     });
@@ -234,6 +252,10 @@ const App = () => {
   const endTurn = useCallback(() => {
     checkForWords();
     const newTotalScore = score();
+    scoreTimeouts.current.push(setTimeout(() => {
+      setTotalScore((old) => old + newTotalScore);
+      setTurnScore(null);
+    }, (scoreTimeouts.current.length * 500) + 1000));
     const newFixedTiles = [];
     gridArray.forEach((row) => row.forEach((col) => {
       if (col.tile) {
@@ -253,6 +275,7 @@ const App = () => {
       setAllTiles((old) => old.slice(ttd));
       setTrayArray(newTray);
       setSwapArray([]);
+      scoreTimeouts.current = [];
       bonusSpacesRef.current.forEach((b) => {
         const [row, col] = b.id.split(',').map((n) => parseInt(n));
         setGridArray((old) => old.map((r, i) => r.map((c, j) => {
@@ -265,12 +288,18 @@ const App = () => {
     } else {
       // Round over
       if (newTotalScore >= target) {
-        setFixedTiles([]);
-        setBlanks({});
-        setAllTiles(tileLibrary.current);
-        setRoundOver(true);
+        scoreTimeouts.current.push(setTimeout(() => {
+          setFixedTiles([]);
+          setBlanks({});
+          setAllTiles(tileLibrary.current);
+          setRoundOver(true);
+          scoreTimeouts.current = [];
+        }, (scoreTimeouts.current.length * 500) + 2000));
       } else {
-        setGameOver(true);
+        scoreTimeouts.current.push(setTimeout(() => {
+          setGameOver(true);
+          scoreTimeouts.current = [];
+        }, (scoreTimeouts.current.length * 500) + 2000));
       }
     }
   }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBlanks, setFixedTiles, swapArray, target, trayArray, turns]);
@@ -503,6 +532,7 @@ const App = () => {
   }, [gridSizeY, gridSizeX, handleNextRound, inventory.length]);
 
   const handleGameOver = useCallback(() => {
+    scoreTimeouts.current = [];
     const newGridSize = 7;
     setGridSizeY(newGridSize);
     setGridSizeY(newGridSize);
@@ -728,7 +758,7 @@ const App = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           <Box sx={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', mt: 2 }}>
-            <Score score={totalScore} target={target} round={round} />
+            <Score score={totalScore} target={target} round={round} turnScore={turnScore} />
             <Submit onSubmit={endTurn} />
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 120, left: '50%', transform: 'translateX(-50%)', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
