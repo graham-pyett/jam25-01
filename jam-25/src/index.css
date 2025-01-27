@@ -4,9 +4,6 @@ body {
   font-family: 'Nunito Sans', sans-serif!important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center center;
   min-height: 100vh;
 }
 
@@ -37,7 +34,7 @@ code {
 .button {
   background: rgb(72,14,102);
   background: linear-gradient(338deg, rgba(72,14,102,0.8509904450061274) 0%, rgba(224,75,232,0.7641557111125701) 100%);
-  font-family: "Mystery Quest", serif!important;
+  font-family: "Orbitron", serif!important;
   text-transform: unset!important;
   font-size: 16px!important;
   font-weight: 400;

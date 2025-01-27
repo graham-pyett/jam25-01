@@ -1,5 +1,6 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
+import Tour from 'reactour'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
 import Score from "../components/Score";
 import Grid from "../components/Grid";
@@ -20,6 +21,7 @@ import Edge from "../components/Edge";
 import Swapper from "../components/Swapper";
 import Joker from "../components/Joker";
 import JokerSpace from "../components/JokerSpace";
+import { useUser } from "../providers/UserProvider";
 
 const TARGETS = [
   0,
@@ -49,6 +51,7 @@ const TARGETS = [
 ];
 
 const App = () => {
+  const { user, setDidTour } = useUser();
   const  matches = useMediaQuery('(max-width: 900px)');
   const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles } = useGameData();
   const tilesToDrawRef = useRef(13);
@@ -123,7 +126,7 @@ const App = () => {
     });
     scoreTimeouts.current.push(setTimeout(() => {
       setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, placement: word.orientation === 'horizontal' ? 'left' : 'top' }]);
-      setTurnScore((old) => old + baseScore);
+      setTurnScore((old) => (old ?? 0) + baseScore);
       setTimeout(() => {
         setScoringTiles((old) => old.filter((t) => t.id !== word.tiles[0]?.props?.id));
       }, 1000);
@@ -140,7 +143,7 @@ const App = () => {
       const delta = newScore - currentScore;
       scoreTimeouts.current.push(setTimeout(() => {
         setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom' }]);
-        setTurnScore((old) => old + delta);
+        setTurnScore((old) => (old ?? 0) + delta);
         setTimeout(() => {
           setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id));
         }, 1000);
@@ -159,15 +162,15 @@ const App = () => {
   }, [jokers]);
 
   const start = useCallback(() => {
-    const ttd = tilesToDrawRef.current + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.draws ?? 0, 0);
+    const ttd = tilesToDrawRef.current + (getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.draws ?? 0, 0));
     const newAllTiles = shuffle(tileLibrary.current).map((l) => <Tile key={l.id} letter={l} id={l.id} />);
     const drawn = newAllTiles.slice(0, ttd);
     setBag(newAllTiles.length - ttd);
     setAvailableTiles(drawn);
     setAllTiles(newAllTiles.slice(ttd));
     setTrayArray(drawn);
-    setTurns(3 + getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.turns ?? 0), 0));
-    setSwaps(3 + getGlobalJokers()?.reduce((acc, j) => acc + (j.props?.joker?.global?.swaps ?? 0), 0));
+    setTurns(3 + (getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.turns ?? 0), 0)));
+    setSwaps(3 + (getGlobalJokers()?.reduce((acc, j) => acc + (j.props?.joker?.global?.swaps ?? 0), 0)));
     setSwapArray([]);
     currentTurnRef.current = 0;
     setCurrentTurn(1)
@@ -253,7 +256,7 @@ const App = () => {
     checkForWords();
     const newTotalScore = score();
     scoreTimeouts.current.push(setTimeout(() => {
-      setTotalScore((old) => old + newTotalScore);
+      setTotalScore(newTotalScore);
       setTurnScore(null);
     }, (scoreTimeouts.current.length * 500) + 1000));
     const newFixedTiles = [];
@@ -266,6 +269,7 @@ const App = () => {
 
     currentTurnRef.current++;
     if (newTotalScore < target && currentTurnRef.current < turns) {
+      scoreTimeouts.current.push(setTimeout(() => {
       setCurrentTurn((old) => old + 1);
       const ttd = (tilesToDrawRef.current + getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.draws ?? 0, 0)) - trayArray.length - swapArray.length;
       const drawn = allTiles.slice(0, ttd);
@@ -285,6 +289,7 @@ const App = () => {
           return c;
         })));
       });
+    }, (scoreTimeouts.current.length * 500) + 1500));
     } else {
       // Round over
       if (newTotalScore >= target) {
@@ -354,7 +359,7 @@ const App = () => {
 
   const handleUpgrade = useCallback((tile, upgrade) => {
     if (upgrade.placement === 'tile') {
-      const newTile = { ...tile, ...upgrade, id: tile.id };
+      const newTile = { ...tile, ...upgrade, value: tile.value + upgrade.adder, id: tile.id };
       tileLibrary.current = tileLibrary.current.filter((t) => t.id !== tile.id);
       tileLibrary.current.push(newTile);
       return newTile;
@@ -569,16 +574,47 @@ const App = () => {
     }
   }, [allTiles, gridArray, swapArray.length, swaps, trayArray])
 
+  const steps = useMemo(() => [
+    {
+      selector: '.tray',
+      content: 'This is your tray. Drag tiles from here to the board to make words.',
+    },
+    {
+      selector: '.board',
+      content: 'This is the board. Drag tiles from your tray to the board to make words. Words must be left-to-right or top-to-bottom.',
+    },
+    {
+      selector: '.target',
+      content: 'This is the target score for the round. You must beat this score to move on to the next round.',
+    },
+    {
+      selector: '.end-turn',
+      content: 'When you are done making words, click here to end your turn. You have three turns per round to try to reach the target.',
+    },
+    {
+      selector: '.swapper',
+      content: "If you don't like your letters, you can swap tiles from your tray for new ones. You have 3 swaps per round.",
+    },
+    {
+      selector: '.inventory',
+      content: 'After each successful round you can buy upgrades in the shop. You can also buy jokers to help you increase your score.',
+    },
+  ], []);
+
   if (!gameStarted) {
     return (
+      <>
+      {/* <Box className="glow" sx={{ color: 'white', position: 'relative', height: 9000, width: 2000, m: 4,  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '72px', fontFamily: 'Orbitron' }}>
+        Glyphoria
+      </Box> */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', p: 2, boxSizing: 'border-box' }}>
-        <Box className="glow" sx={{ fontSize: '56px', mt: 4, textAlign: 'center', fontFamily: '"Mystery Quest", serif', fontWeight: 400, color: 'white' }}>
+        <Box className="glow" sx={{ fontSize: '56px', mt: 4, textAlign: 'center', fontFamily: '"Orbitron", serif', fontWeight: 400, color: 'white' }}>
           Glyphoria
         </Box>
         <Box sx={{ fontSize: '18px', mt: 2, textAlign: 'center' }}>
           The object of the game is to make a crossword grid on the board with a high enough total score to beat the target.<br /><strong>Words must be left-to-right or top-to-bottom</strong>.
         </Box>
-        <Box sx={{ fontSize: '18px', mt: 1, color: 'tomato', textAlign: 'center' }}>
+        <Box sx={{ fontSize: '18px', mt: 1, color: '#8a1e39', textAlign: 'center' }}>
           WARNING: Invalid words will be penalized!
         </Box>
         <Box sx={{ fontSize: '18px', mt: 1, textAlign: 'center' }}>
@@ -596,13 +632,14 @@ const App = () => {
           </Button>
         </Box>
       </Box>
+      </>
     );
   }
 
   return (
     <>
       <Dialog open={roundOver}>
-        <DialogTitle>Round Over</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Round Over</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ fontSize: '24px', mt: 2 }}>Round {round} Over</Box>
@@ -621,18 +658,18 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={shopOpen}>
-        <DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
             <Typography variant='h5'>Shop!</Typography>
             <Typography variant='h5' sx={{ color: 'goldenrod' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Typography variant='overline'>Inventory</Typography>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
           <Box sx={{ minHeight: 50, mb: 2, p: 1, backgroundColor: 'gainsboro', border: '1px solid lightgrey', borderRadius: '8px' }}>
             {inventoryItems}
           </Box>
-          <Typography variant='overline'>Available Jokers</Typography>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Jokers</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
               {availableJokers.map((u) => (
@@ -641,7 +678,7 @@ const App = () => {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
                   <Joker joker={u} id={u.id} />
-                  <Typography variant='h6' sx={{ fontSize: matches ? 18 : 20 }}>{u.name}</Typography>
+                  <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20 }}>{u.name}</Typography>
                   <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{u.description}</Typography>
                   <Typography variant='body1' sx={{ color: 'goldenrod' }}>Price: ${u.price}</Typography>
                   <Button disabled={u.disabled || funds < u.price || jokers.length >= maxJokers} onClick={() => {
@@ -655,7 +692,7 @@ const App = () => {
               ))}
             </Box>
           </Box>
-          <Typography variant='overline'>Available Upgrades</Typography>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Upgrades</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
               {availableUpgrades.map((u) => (
@@ -678,7 +715,7 @@ const App = () => {
               ))}
             </Box>
           </Box>
-          <Typography variant='overline'>Available Tiles</Typography>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Tiles</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: matches ? -1 : -2 }}>	
               {availableUpgradeTiles.map((u) => (
@@ -707,14 +744,14 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={placementOpen}>
-        <DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
             <Typography variant='h5'>Shop!</Typography>
             <Typography variant='h5' sx={{ color: 'goldenrod' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Typography variant='overline'>Inventory</Typography>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
           <DndContext onDragStart={handleDragInventoryStart} onDragEnd={handleDragInventoryEnd}>
               <Inventory items={inventoryItems} />
               <DragOverlay>
@@ -743,11 +780,11 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={gameOver}>
-        <DialogTitle>Game Over</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ fontSize: '24px', mt: 2 }}>Game Over!</Box>
-            <Box sx={{ fontSize: '24px', mt: 2, color: 'tomato' }}>Total Score: {totalScore}/{target}</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, fontFamily: 'Orbitron' }}>Game Over</Box>
+            <Box sx={{ fontSize: '24px', mt: 2 }}>You beat <span style={{ fontFamily: 'Orbitron', color: '#11adab' }}>{round - 1}</span> rounds</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, color: '#8a1e39', fontFamily: 'Orbitron' }}>Total Score: {totalScore}/{target}</Box>
             <Box sx={{ mt: 2 }}>
               <Button className="button" variant="contained" onClick={handleGameOver}>Start Over</Button>
             </Box>
@@ -768,8 +805,8 @@ const App = () => {
               ))
             }
           </Box>
-          <Box sx={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', maxHeight: '40vh', overflow: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Box sx={{ position: 'relative', scale: matches ? 0.75 : 1 }}>
+          <Box sx={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', maxHeight: '45vh', overflow: 'auto', display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <Box className="board" sx={{ position: 'relative', scale: matches ? 0.75 : 1 }}>
               <Grid gridArray={gridArray} />
             </Box>
           </Box>
@@ -783,6 +820,11 @@ const App = () => {
           </DragOverlay>
         </Box>
       </DndContext>
+      <Tour
+        steps={steps}
+        isOpen={!user?.didTour}
+        onRequestClose={() => setDidTour(true)}
+      />
     </>
     
   );
