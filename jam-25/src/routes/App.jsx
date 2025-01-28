@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import Tour from 'reactour'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
@@ -22,6 +22,7 @@ import Swapper from "../components/Swapper";
 import Joker from "../components/Joker";
 import JokerSpace from "../components/JokerSpace";
 import { useUser } from "../providers/UserProvider";
+import Bag from "../components/Bag";
 
 const TARGETS = [
   0,
@@ -53,13 +54,15 @@ const TARGETS = [
 const App = () => {
   const { user, setDidTour } = useUser();
   const  matches = useMediaQuery('(max-width: 900px)');
-  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles } = useGameData();
+  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, setBagTiles, setRoundOver: setGlobalRoundOver, turnOver, setTurnOver } = useGameData();
   const tilesToDrawRef = useRef(13);
   const [gridSizeY, setGridSizeY] = useState(7);
   const [gridSizeX, setGridSizeX] = useState(7);
   const [gameStarted, setGameStarted] = useState(false);
   const tileLibrary = useRef(getStarterLetters());
-  const [allTiles, setAllTiles] = useState(shuffle(getStarterLetters().map((l) => <Tile key={l.id} letter={l} id={l.id} />)));
+  const initialPositions = useRef({});
+  const tilesOnBoard = useRef([]);
+  const [allTiles, setAllTiles] = useState([]);
   const [bag, setBag] = useState(0);
   const [swaps, setSwaps] = useState(3);
   const [turns, setTurns] = useState(0);
@@ -125,6 +128,7 @@ const App = () => {
       }
     });
     scoreTimeouts.current.push(setTimeout(() => {
+      console.log({ id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, placement: word.orientation === 'horizontal' ? 'left' : 'top' })
       setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, placement: word.orientation === 'horizontal' ? 'left' : 'top' }]);
       setTurnScore((old) => (old ?? 0) + baseScore);
       setTimeout(() => {
@@ -134,12 +138,12 @@ const App = () => {
     return baseScore;
   }, [gridArray, setScoringTiles]);
 
-  const score = useCallback(() => {
-    const validScore = words[currentTurnRef.current].filter((w) => w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
-    const invalidScore = words[currentTurnRef.current].filter((w) => !w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
+  const score = useCallback((newWords) => {
+    const validScore = newWords.filter((w) => w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
+    const invalidScore = newWords.filter((w) => !w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
     let currentScore = validScore - invalidScore;
     jokers.forEach((j) => {
-      const { newScore, newMoney } = j.props?.joker?.action?.({ words: words, grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
+      const { newScore, newMoney } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
       const delta = newScore - currentScore;
       scoreTimeouts.current.push(setTimeout(() => {
         setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0 }]);
@@ -162,13 +166,18 @@ const App = () => {
   }, [jokers]);
 
   const start = useCallback(() => {
+    scoreTimeouts.current = [];
+    tilesOnBoard.current = [];
+    initialPositions.current = {};
     const ttd = tilesToDrawRef.current + (getGlobalJokers().reduce((acc, j) => acc + j.props?.joker?.global?.draws ?? 0, 0));
-    const newAllTiles = shuffle(tileLibrary.current).map((l) => <Tile key={l.id} letter={l} id={l.id} />);
+    const newAllTiles = shuffle(tileLibrary.current).map((l) => <Tile key={l.id} letter={l} id={l.id} dealable />);
     const drawn = newAllTiles.slice(0, ttd);
     setBag(newAllTiles.length - ttd);
     setAvailableTiles(drawn);
     setAllTiles(newAllTiles.slice(ttd));
     setTrayArray(drawn);
+    setBagTiles(drawn.map((t) => t.props.id));
+    setDealing(true);
     setTurns(3 + (getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.turns ?? 0), 0)));
     setSwaps(3 + (getGlobalJokers()?.reduce((acc, j) => acc + (j.props?.joker?.global?.swaps ?? 0), 0)));
     setSwapArray([]);
@@ -186,7 +195,7 @@ const App = () => {
       });
       return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
     })));
-  }, [getGlobalJokers, round, gridSizeY, gridSizeX]);
+  }, [getGlobalJokers, setBagTiles, setDealing, round, gridSizeY, gridSizeX]);
 
   const checkForWords = useCallback(() => {
     // find all words on the board
@@ -245,16 +254,22 @@ const App = () => {
     gridArray.forEach((row, i) => {
       row.forEach((col, j) => {
         if (col.tile && !gridArray[i][j - 1]?.tile && !gridArray[i][j + 1]?.tile && !gridArray[i - 1]?.[j]?.tile && !gridArray[i + 1]?.[j]?.tile) {
-          newFoundWords.push({ word: col.tile.props.letter.letter, valid: false, score: col.tile.props.letter.value, tiles: [col.tile], orientation: 'vertical' });
+          if (!fixedTiles.includes(col.tile.props.id)) {
+            newFoundWords.push({ word: col.tile.props.letter.letter, valid: false, score: col.tile.props.letter.value, tiles: [col.tile], orientation: 'vertical' });
+          }
         }
       });
     });
-    setWords((old) => { old[currentTurnRef.current] = newFoundWords; return old; });
+
+    return newFoundWords;
   }, [blanks, fixedTiles, gridArray]);
 
   const endTurn = useCallback(() => {
-    checkForWords();
-    const newTotalScore = score();
+    setTurnOver(true);
+    const newWords = checkForWords();
+    const newTotalScore = score(newWords);
+    const thisTurn = currentTurnRef.current;
+    setWords((old) => { old[thisTurn] = newWords; return old; })
     scoreTimeouts.current.push(setTimeout(() => {
       setTotalScore(newTotalScore);
       setTurnScore(null);
@@ -263,6 +278,7 @@ const App = () => {
     gridArray.forEach((row) => row.forEach((col) => {
       if (col.tile) {
         newFixedTiles.push(col.tile.props.id);
+        tilesOnBoard.current.push(col.tile.props.id);
       }
     }));
     setFixedTiles(newFixedTiles);
@@ -278,6 +294,8 @@ const App = () => {
       setAvailableTiles(newTray);
       setAllTiles((old) => old.slice(ttd));
       setTrayArray(newTray);
+      setBagTiles(drawn.map((t) => t.props.id));
+      setDealing(true);
       setSwapArray([]);
       scoreTimeouts.current = [];
       bonusSpacesRef.current.forEach((b) => {
@@ -291,6 +309,12 @@ const App = () => {
       });
     }, (scoreTimeouts.current.length * 500) + 1500));
     } else {
+      tilesOnBoard.current.push(...trayArray.map((t) => t.props.id));
+      scoreTimeouts.current.push(setTimeout(() => {
+        setBagTiles(tilesOnBoard.current);
+        setDealing(true);
+        setGlobalRoundOver(true);
+      }, (scoreTimeouts.current.length * 500) + 300));
       // Round over
       if (newTotalScore >= target) {
         scoreTimeouts.current.push(setTimeout(() => {
@@ -298,16 +322,18 @@ const App = () => {
           setBlanks({});
           setAllTiles(tileLibrary.current);
           setRoundOver(true);
+          setGlobalRoundOver(false);
           scoreTimeouts.current = [];
-        }, (scoreTimeouts.current.length * 500) + 2000));
+        }, (scoreTimeouts.current.length * 500) + 1500));
       } else {
         scoreTimeouts.current.push(setTimeout(() => {
           setGameOver(true);
+          setGlobalRoundOver(false);
           scoreTimeouts.current = [];
-        }, (scoreTimeouts.current.length * 500) + 2000));
+        }, (scoreTimeouts.current.length * 500) + 1500));
       }
     }
-  }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBlanks, setFixedTiles, swapArray, target, trayArray, turns]);
+  }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setTurnOver, swapArray, target, trayArray, turns]);
 
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
@@ -344,6 +370,10 @@ const App = () => {
       setTrayArray((old) => [...old, activeTile]);
     }
   }, [activeTile, setBlanks]);
+
+  const submitDisabled = useMemo(() => {
+    return !gridArray.flat().some((t) => t.tile && !fixedTiles.includes(t.tile.props.id));
+  }, [fixedTiles, gridArray]);
 
   
   const handleDragInventoryStart = useCallback((event) => {
@@ -572,10 +602,12 @@ const App = () => {
       setAvailableTiles([...newTray, ...gridTiles]);
       setAllTiles((old) => old.slice(ttd));
       setTrayArray(newTray);
+      setBagTiles(drawn.map((t) => t.props.id));
+      setDealing(true);
       setSwapArray([]);
       setSwaps((old) => old - 1);
     }
-  }, [allTiles, gridArray, swapArray.length, swaps, trayArray])
+  }, [allTiles, gridArray, setBagTiles, setDealing, swapArray.length, swaps, trayArray])
 
   const steps = useMemo(() => [
     {
@@ -799,9 +831,9 @@ const App = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', top: 0, mt: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
-            <Box sx={{ width: matches ? '0' : 120, mr: matches ? 1 : 2 }} />
+            <Bag bag={bag} allTiles={allTiles} />
             <Score score={totalScore} target={target} round={round} turnScore={turnScore} />
-            <Submit onSubmit={endTurn} />
+            <Submit onSubmit={endTurn} disabled={submitDisabled} />
           </Box>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 120, left: '50%', transform: 'translateX(-50%)', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
             {
@@ -816,7 +848,7 @@ const App = () => {
             </Box>
           </Box>
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', bottom: 0, mb: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
-            <InfoPanel bag={bag} swaps={swaps} turn={currentTurn} turns={turns} money={funds} />
+            <InfoPanel swaps={swaps} turn={currentTurn} turns={turns} money={funds} />
             <Tray tiles={trayArray} />
             <Swapper tiles={swapArray} handleSwap={handleSwap} swaps={swaps} />
           </Box>
