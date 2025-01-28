@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import Tour from 'reactour'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
@@ -54,7 +54,7 @@ const TARGETS = [
 const App = () => {
   const { user, setDidTour } = useUser();
   const  matches = useMediaQuery('(max-width: 900px)');
-  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, setBagTiles, setRoundOver: setGlobalRoundOver, turnOver, setTurnOver } = useGameData();
+  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, setBagTiles, setRoundOver: setGlobalRoundOver, setTurnOver } = useGameData();
   const tilesToDrawRef = useRef(13);
   const [gridSizeY, setGridSizeY] = useState(7);
   const [gridSizeX, setGridSizeX] = useState(7);
