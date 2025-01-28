@@ -6,7 +6,7 @@ const Bag = ({ bag, allTiles }) => {
   const matches = useMediaQuery('(max-width:900px)');
   const [bagOpen, setBagOpen] = useState(false);
   return (
-    <Box className="bag" sx={{ backgroundColor: '#564c59', color: 'white', p: matches ? 1 : 2, borderRadius: '8px', border: '1px solid ghostwhite', width: matches ? 'calc(25vw - 4px)' : 120, mr: matches ? 1 : 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }}>
+    <Box className="bag" sx={{ zIndex: 10, backgroundColor: '#564c59', color: 'white', p: matches ? 1 : 2, borderRadius: '8px', border: '1px solid ghostwhite', width: matches ? 'calc(25vw - 4px)' : 120, mr: matches ? 1 : 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }}>
       <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between'}}><span><Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Bag:</Typography></span><span><Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>{bag}</Typography></span></Box>
       <Button className="button" variant="contained" sx={{ mx: 'auto' }} onClick={() => setBagOpen(true)}>Open</Button>
       <Dialog open={bagOpen}>
