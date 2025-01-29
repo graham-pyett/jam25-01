@@ -54,7 +54,7 @@ const TARGETS = [
 const App = () => {
   const { user, setDidTour } = useUser();
   const  matches = useMediaQuery('(max-width: 900px)');
-  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, setBagTiles, setRoundOver: setGlobalRoundOver, setTurnOver } = useGameData();
+  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, setBagTiles, setRoundOver: setGlobalRoundOver, setTurnOver, setRetrieving, setSwapTiles } = useGameData();
   const tilesToDrawRef = useRef(13);
   const [gridSizeY, setGridSizeY] = useState(7);
   const [gridSizeX, setGridSizeX] = useState(7);
@@ -95,7 +95,7 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
-  const [jokers, setJokers] = useState([]);
+  const [jokers, setJokers] = useState([]); // <Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
   const [maxJokers, setMaxJokers] = useState(5);
 
   const scoreWord = useCallback((word) => {
@@ -128,7 +128,6 @@ const App = () => {
       }
     });
     scoreTimeouts.current.push(setTimeout(() => {
-      console.log({ id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, placement: word.orientation === 'horizontal' ? 'left' : 'top' })
       setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, placement: word.orientation === 'horizontal' ? 'left' : 'top' }]);
       setTurnScore((old) => (old ?? 0) + baseScore);
       setTimeout(() => {
@@ -143,8 +142,7 @@ const App = () => {
     const invalidScore = newWords.filter((w) => !w.valid).reduce((acc, w) => acc + scoreWord(w), 0);
     let currentScore = validScore - invalidScore;
     jokers.forEach((j) => {
-      const { newScore, newMoney } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore }) ?? { newScore: currentScore, newMoney: 0 };
-      const delta = newScore - currentScore;
+      const { newScore, newMoney, delta } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore, target }) ?? { newScore: currentScore, newMoney: 0, delta: 0 };
       scoreTimeouts.current.push(setTimeout(() => {
         setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0 }]);
         setTurnScore((old) => (old ?? 0) + delta);
@@ -159,13 +157,14 @@ const App = () => {
     // setTotalScore(turnScores.current.reduce((acc, s) => acc + s, 0));
     const newTurnScore = turnScores.current.reduce((acc, s) => acc + s, 0)
     return newTurnScore;
-  }, [gridArray, jokers, scoreWord, setScoringTiles, words]);
+  }, [gridArray, jokers, scoreWord, setScoringTiles, target, words]);
 
   const getGlobalJokers = useCallback(() => {
     return jokers.filter((j) => j.props?.joker?.global);
   }, [jokers]);
 
   const start = useCallback(() => {
+    setRetrieving([]);
     scoreTimeouts.current = [];
     tilesOnBoard.current = [];
     initialPositions.current = {};
@@ -195,7 +194,7 @@ const App = () => {
       });
       return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
     })));
-  }, [getGlobalJokers, setBagTiles, setDealing, round, gridSizeY, gridSizeX]);
+  }, [setRetrieving, getGlobalJokers, setBagTiles, setDealing, round, gridSizeY, gridSizeX]);
 
   const checkForWords = useCallback(() => {
     // find all words on the board
@@ -311,8 +310,7 @@ const App = () => {
     } else {
       tilesOnBoard.current.push(...trayArray.map((t) => t.props.id));
       scoreTimeouts.current.push(setTimeout(() => {
-        setBagTiles(tilesOnBoard.current);
-        setDealing(true);
+        setRetrieving(tilesOnBoard.current);
         setGlobalRoundOver(true);
       }, (scoreTimeouts.current.length * 500) + 300));
       // Round over
@@ -333,7 +331,7 @@ const App = () => {
         }, (scoreTimeouts.current.length * 500) + 1500));
       }
     }
-  }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setTurnOver, swapArray, target, trayArray, turns]);
+  }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setRetrieving, setTurnOver, swapArray, target, trayArray, turns]);
 
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
@@ -480,15 +478,17 @@ const App = () => {
   const getNewFunds = useCallback(() => {
     const base = 3;
     const remainingTurns = turns - currentTurn;
-    const words = 0;
+    const remainingSwaps = swaps;
+    const wordScore = words.flat().filter((w) => w.valid).length <= turns - remainingTurns ? 5 : 0;
 
     return {
       base,
       turns: remainingTurns,
-      words,
-      total: base + remainingTurns + words,
+      swaps: remainingSwaps,
+      words: wordScore,
+      total: base + remainingTurns + remainingSwaps + wordScore,
     }
-  }, [currentTurn, turns]);
+  }, [currentTurn, swaps, turns, words]);
 
   const handleOpenShop = useCallback(() => {
     setFunds((old) => getNewFunds().total + old)
@@ -589,25 +589,29 @@ const App = () => {
 
   const handleSwap = useCallback(() => {
     if (swaps > 0) {
-      const ttd = swapArray.length;
-      const drawn = allTiles.slice(0, ttd);
-      setBag(allTiles.length - ttd);
-      const newTray = [...trayArray, ...drawn];
-      const gridTiles = [];
-      gridArray.forEach((row) => row.forEach((col) => {
-        if (col.tile) {
-          gridTiles.push(col.tile);
-        }
-      }));
-      setAvailableTiles([...newTray, ...gridTiles]);
-      setAllTiles((old) => old.slice(ttd));
-      setTrayArray(newTray);
-      setBagTiles(drawn.map((t) => t.props.id));
-      setDealing(true);
-      setSwapArray([]);
-      setSwaps((old) => old - 1);
+      setSwapTiles(swapArray.map((t) => t.props.id));
+      setTimeout(() => {
+        const ttd = swapArray.length;
+        const drawn = allTiles.slice(0, ttd);
+        setBag(allTiles.length - ttd);
+        const newTray = [...trayArray, ...drawn];
+        const gridTiles = [];
+        gridArray.forEach((row) => row.forEach((col) => {
+          if (col.tile) {
+            gridTiles.push(col.tile);
+          }
+        }));
+        setAvailableTiles([...newTray, ...gridTiles]);
+        setAllTiles((old) => old.slice(ttd));
+        setTrayArray(newTray);
+        setBagTiles(drawn.map((t) => t.props.id));
+        setDealing(true);
+        setSwapArray([]);
+        setSwapTiles([]);
+        setSwaps((old) => old - 1);
+      }, 600 + (swapArray.length * 100));
     }
-  }, [allTiles, gridArray, setBagTiles, setDealing, swapArray.length, swaps, trayArray])
+  }, [swaps, setSwapTiles, swapArray, allTiles, trayArray, gridArray, setBagTiles, setDealing])
 
   const steps = useMemo(() => [
     {
@@ -636,6 +640,10 @@ const App = () => {
   ], []);
 
   const shouldTour = useMemo(() => !user?.didTour, [user]);
+
+  const getAllTiles = useCallback(() => {
+    return [...tileLibrary.current].sort((a, b) => a.letter.localeCompare(b.letter));
+  }, []);
 
   if (!gameStarted) {
     return (
@@ -685,6 +693,7 @@ const App = () => {
               <Divider />
               <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Base:</span><span>+${getNewFunds().base}</span></Box>
               <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Remaining Turns:</span><span>+${getNewFunds().turns}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Remaining Swaps:</span><span>+${getNewFunds().swaps}</span></Box>
               <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Word bonus:</span><span>+${getNewFunds().words}</span></Box>
      
           </Box>
@@ -700,7 +709,7 @@ const App = () => {
             <Typography variant='h5' sx={{ color: 'goldenrod', fontFamily: 'Orbitron' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
           <Box sx={{ minHeight: 50, mb: 2, p: 1, backgroundColor: 'gainsboro', border: '1px solid lightgrey', borderRadius: '8px' }}>
             {inventoryItems}
@@ -720,7 +729,7 @@ const App = () => {
                   <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || funds < u.price || jokers.length >= maxJokers} onClick={() => {
                     if (funds >= u.price) {
                       setFunds((old) => old - u.price);
-                      setJokers((old) => [...old, <Joker joker={u} />]);
+                      setJokers((old) => [...old, <Joker joker={u} id={u.id} />]);
                       setAvailableJokers((old) => old.map((a) => ({ ...a, disabled: a.id === u.id })));
                     }
                   }}>Buy</Button>
@@ -774,10 +783,10 @@ const App = () => {
               ))}
             </Box>
           </Box>
-          <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-            <Button className="button" variant="contained" onClick={handlePlacement}>{inventory.length ? 'Continue' : 'Next Round'}</Button>
-          </Box>
         </DialogContent>
+        <Box sx={{ my: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
+          <Button className="button" variant="contained" onClick={handlePlacement}>{inventory.length ? 'Continue' : 'Next Round'}</Button>
+        </Box>
       </Dialog>
       <Dialog open={placementOpen}>
         <DialogTitle sx={{ fontFamily: 'Orbitron' }}>
@@ -786,7 +795,7 @@ const App = () => {
             <Typography variant='h5' sx={{ color: 'goldenrod' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
           <DndContext onDragStart={handleDragInventoryStart} onDragEnd={handleDragInventoryEnd}>
               <Inventory items={inventoryItems} />
@@ -810,10 +819,10 @@ const App = () => {
                 <Edge side="bottom" />
               </Box>
           </DndContext>
-          <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
+        </DialogContent>
+        <Box sx={{ my: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
             <Button className="button" variant="contained" onClick={handleNextRound}>Next Round</Button>
           </Box>
-        </DialogContent>
       </Dialog>
       <Dialog open={gameOver}>
         <DialogContent>
@@ -830,11 +839,6 @@ const App = () => {
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', top: 0, mt: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
-            <Bag bag={bag} allTiles={allTiles} />
-            <Score score={totalScore} target={target} round={round} turnScore={turnScore} />
-            <Submit onSubmit={endTurn} disabled={submitDisabled} />
-          </Box>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 120, left: '50%', transform: 'translateX(-50%)', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
             {
               Array(maxJokers).fill().map((_, i) => (
@@ -855,6 +859,11 @@ const App = () => {
           <DragOverlay>
             { activeTile }
           </DragOverlay>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', top: 0, mt: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
+            <Bag bag={bag} getAllTiles={getAllTiles} allTiles={allTiles} />
+            <Score score={totalScore} target={target} round={round} turnScore={turnScore} />
+            <Submit onSubmit={endTurn} disabled={submitDisabled} />
+          </Box>
         </Box>
       </DndContext>
       {

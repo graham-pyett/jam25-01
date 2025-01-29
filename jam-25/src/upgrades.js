@@ -20,56 +20,59 @@ export const BONUSES = {
 
 export const JOKERS = [
   { price: 4, id: v4(), text: '2️⃣', name: 'X 2', description: 'Multiplies the total score by two',
-    action: ({ words, grid, totalScore, invalidScore }) => { return { newScore: totalScore * 2, newMoney: 0 }; },
+    action: ({ words, grid, totalScore, invalidScore }) => { return { newScore: totalScore * 2, delta: totalScore, newMoney: 0 }; },
     style: { border: '1px solid rgb(170, 191, 33)', backgroundColor: 'rgba(170, 191, 33, 0.4)' } },
   { price: 3, id: v4(), text: '➕', name: '+ 20', description: 'Adds 20 to the total score',
-    action: ({ words, grid, totalScore, invalidScore }) => { return { newScore: totalScore + 20, newMoney: 0 }; },
+    action: ({ words, grid, totalScore, invalidScore }) => { return { newScore: totalScore + 20, delta: 20, newMoney: 0 }; },
     style: { border: '1px solid rgb(191, 33, 35)', backgroundColor: 'rgba(191, 33, 35, 0.4)' } },
   { price: 5, id: v4(), text: '❌', name: 'Crosser', description: 'Adds +1 multiplier for every intersection',
     action: ({ words, grid, totalScore, invalidScore }) => {
       const tileCounts = {};
       words.flat().filter((w) => w.valid).forEach((w) => w.tiles?.forEach((t) => tileCounts[t.props?.id] = tileCounts[t.props?.id] ? tileCounts[t.props?.id] += 1 : 1))
-      return { newScore: (1 + (Object.keys(tileCounts).filter((k) => tileCounts[k] > 1).length)) * totalScore, newMoney: 0 };
+      const newScore = (1 + (Object.keys(tileCounts).filter((k) => tileCounts[k] > 1).length)) * totalScore;
+      return { newScore, newMoney: 0, delta: newScore - totalScore };
     },
     style: { border: '1px solid rgb(245, 64, 184)', backgroundColor: 'rgba(245, 64, 184, 0.4)' } },
   { price: 6, id: v4(), text: '💰', name: 'Banker', description: '+$1 for every word',
     action: ({ words, grid, totalScore, invalidScore }) => {
       const wordCount = words[words.length - 1].filter((w) => w.valid).length
-      return { newScore: totalScore, newMoney: wordCount * 1 };
+      return { newScore: totalScore, delta: 0, newMoney: wordCount * 1 };
     },
     style: { border: '1px solid rgb(237, 193, 50)', backgroundColor: 'rgba(237, 193, 50, 0.4)' } },
   { price: 3, id: v4(), text: '🅰️', name: 'Vowel Movement', description: '+1 point for every vowel',
     action: ({ words, grid, totalScore, invalidScore }) => {
       let vowelCount = 0;
       const vowels = ['A', 'E', 'I', 'O', 'U'];
-      words[words.length - 1].forEach((w) => w.word.split('').forEach((c) => { if (vowels.includes(c)) { vowelCount += 1; } }));
-      return { newScore: totalScore + vowelCount, newMoney: 0 };
+      words[words.length - 1].filter((w) => w.valid).forEach((w) => w.word.split('').forEach((c) => { if (vowels.includes(c)) { vowelCount += 1; } }));
+      return { newScore: totalScore + vowelCount, delta: vowelCount, newMoney: 0 };
     },
     style: { border: '1px solid rgb(33, 117, 71)', backgroundColor: 'rgba(33, 117, 71, 0.4)' } },
   { price: 3, id: v4(), text: '⬆️', name: 'Less Worse', description: 'Halve the penalty for invalid words',
     action: ({ words, grid, totalScore, invalidScore }) => {
-      return { newScore: totalScore + (Math.floor(invalidScore / 2)), newMoney: 0 };
+      const newScore = totalScore + (Math.floor(invalidScore / 2));
+      return { newScore, delta: newScore - totalScore, newMoney: 0 };
     },
     style: { border: '1px solid rgb(145, 28, 39)', backgroundColor: 'rgba(145, 28, 39, 0.4)' } },
   { price: 5, id: v4(), text: '🧠', name: 'Brainiac', description: '+3 multiplier for every valid word, but +3 multiplier for every invalid word',
     action: ({ words, grid, totalScore, validScore, invalidScore }) => {
       const newValid = validScore * 3;
       const newInvalid = invalidScore * 3;
-      return { newScore: totalScore + (newValid - newInvalid), newMoney: 0 };
+      return { newScore: totalScore + (newValid - newInvalid), delta: (newValid - newInvalid), newMoney: 0 };
     },
     style: { border: '1px solid rgb(94, 87, 81)', backgroundColor: 'rgba(94, 87, 81, 0.4)' } },
   { price: 9, id: v4(), text: '🫅', name: 'Short King', description: '+5 points for every word with 3 or fewer tiles',
     action: ({ words, grid, totalScore, validScore, invalidScore }) => {
       let newScore = 0;
-      words[words.length - 1].forEach((w) => { if (w.tiles.length <= 3) { newScore += 5; } });
-      return { newScore: totalScore + (newScore), newMoney: 0 };
+      words[words.length - 1].filter((w) => w.valid).forEach((w) => { if (w.tiles.length <= 3) { newScore += 5; } });
+      newScore = totalScore + (newScore);
+      return { newScore, delta: newScore - totalScore, newMoney: 0 };
     },
     style: { border: '1px solid rgb(94, 87, 81)', backgroundColor: 'rgba(94, 87, 81, 0.4)' } },
   { price: 6, id: v4(), text: '🍆', name: 'Big Word Energy', description: '+5 points for every word with 6 or more tiles',
     action: ({ words, grid, totalScore, validScore, invalidScore }) => {
       let newScore = 0;
-      words[words.length - 1].forEach((w) => { if (w.tiles.length >= 6) { newScore += 5; } });
-      return { newScore: totalScore + (newScore), newMoney: 0 };
+      words[words.length - 1].filter((w) => w.valid).forEach((w) => { if (w.tiles.length >= 6) { newScore += 5; } });
+      return { newScore: totalScore + (newScore), delta: newScore, newMoney: 0 };
     },
     style: { border: '1px solid rgb(133, 197, 201)', backgroundColor: 'rgba(133, 197, 201, 0.4)' } },
   { price: 6, id: v4(), text: '🩴', name: 'Flip Flop', description: '+1 swap every round',
@@ -84,4 +87,10 @@ export const JOKERS = [
     global: { draws: 3 },
     action: ({ words, grid, totalScore, validScore, invalidScore }) => {},
     style: { border: '1px solid rgb(23, 99, 230)', backgroundColor: 'rgba(23, 99, 230, 0.4)' } },
+  { price: 6, id: v4(), text: '⚰️', name: 'Overkiller', description: '+$4 for every multiple of the target score you reach',
+    global: { draws: 3 },
+    action: ({ words, grid, totalScore, validScore, invalidScore, target }) => {
+      return { newScore: totalScore, delta: 0, newMoney: Math.floor(totalScore / target) * 4 };
+    },
+    style: { border: '1px solid rgb(240, 218, 225)', backgroundColor: 'rgba(240, 218, 225, 0.4)' } },
 ];

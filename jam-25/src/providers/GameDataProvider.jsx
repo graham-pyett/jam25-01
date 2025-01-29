@@ -7,11 +7,15 @@ const GameDataProvider = ({ children }) => {
   const [fixedTiles, setFixedTiles] = useState([]);
   const [scoringTiles, setScoringTiles] = useState([]);
   const [bagTiles, setBagTiles] = useState([]);
+  const [swapTiles, setSwapTiles] = useState([]);
   const [dealing, setDealing] = useState(false);
+  const [retrieving, setRetrieving] = useState([]);
   const transitionRefs = useRef({});
   const turnOffDealing = useRef(null);
   const [roundOver, setRoundOver] = useState(false);
   const [turnOver, setTurnOver] = useState(true);
+
+    console.log(scoringTiles);
 
   useEffect(() => {
     if (dealing) {
@@ -29,7 +33,40 @@ const GameDataProvider = ({ children }) => {
         }
       });
     }
-  }, [bagTiles, dealing]);
+  }, [bagTiles, dealing, retrieving]);
+
+  useEffect(() => {
+    if (retrieving.length) {
+      retrieving.forEach((tile, i) => {
+        if (!transitionRefs.current[tile]) {
+          transitionRefs.current[tile] = setTimeout(() => {
+            setBagTiles((old) => [...old, tile]);
+            clearTimeout(turnOffDealing.current);
+            turnOffDealing.current = setTimeout(() => {
+              setTurnOver(false);
+              transitionRefs.current = {};
+            }, 200);
+          }, 400 + (i * 100));
+        }
+      });
+    }
+  }, [retrieving]);
+
+  useEffect(() => {
+    if (swapTiles.length) {
+      swapTiles.forEach((tile, i) => {
+        if (!transitionRefs.current[tile]) {
+          transitionRefs.current[tile] = setTimeout(() => {
+            setSwapTiles((old) => [...old, tile]);
+            clearTimeout(turnOffDealing.current);
+            turnOffDealing.current = setTimeout(() => {
+              transitionRefs.current = {};
+            }, 200);
+          }, 100 + (i * 100));
+        }
+      });
+    }
+  }, [swapTiles]);
 
   const value = useMemo(() => {
     return {
@@ -40,8 +77,10 @@ const GameDataProvider = ({ children }) => {
       dealing, setDealing,
       roundOver, setRoundOver,
       turnOver, setTurnOver,
+      retrieving, setRetrieving,
+      swapTiles, setSwapTiles,
     };
-  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver]);
+  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles]);
 
   return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
 };

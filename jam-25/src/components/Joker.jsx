@@ -17,7 +17,7 @@ const Joker = ({ sx, joker, id }) => {
         )}>
         {joker.text}
       </Tooltip>
-      <Tooltip arrow open={!!scoringTiles?.find((t) => t.id === id)} title={(
+      <Tooltip arrow open={!!(scoringTiles?.find((t) => t.id === id)?.score || scoringTiles?.find((t) => t.id === id)?.newMoney)} title={(
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {scoringTiles?.find((t) => t.id === id)?.score !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTiles?.find((t) => t.id === id)?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
             {scoringTiles?.find((t) => t.id === id)?.score >= 0 ? '+' : ''} {scoringTiles?.find((t) => t.id === id)?.score ?? ''}

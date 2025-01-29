@@ -3,9 +3,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { useGameData } from "../providers/GameDataProvider";
 
-const Tile = ({ sx, letter, id, dealable }) => {
-  const { blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver } = useGameData();
-  const { attributes, listeners, setNodeRef } = useDraggable({ id, disabled: fixedTiles?.includes(id) || scoringTiles.length, data: { type: 'tile' } });
+const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
+  const { blanks, fixedTiles, scoringTiles, bagTiles, dealing, turnOver, retrieving, swapTiles } = useGameData();
+  const { attributes, listeners, setNodeRef } = useDraggable({ id, disabled: turnOver || dealing || retrieving.length || swapTiles.length || fixedTiles?.includes(id) || scoringTiles.length, data: { type: 'tile' } });
   const displayedLetter = useMemo(() => blanks?.[id] ?? letter.letter, [blanks, id, letter.letter]);
   const [classNames, setClassNames] = useState(['hidden']);
   const delay = useRef(null);
@@ -33,7 +33,7 @@ const Tile = ({ sx, letter, id, dealable }) => {
     if (!turnOver && !fixedTiles?.includes(id) && !scoringTiles.length && !classNames.includes('tile')) {
       setClassNames((old) => [...old, 'tile']);
     }
-  }, [classNames, dealing, fixedTiles, id, scoringTiles.length, turnOver])
+  }, [classNames, fixedTiles, id, scoringTiles.length, turnOver])
 
   useEffect(() => {
     if (dealing && !bagTiles.includes(id) && classNames.includes('in-bag')) {
@@ -42,22 +42,28 @@ const Tile = ({ sx, letter, id, dealable }) => {
   }, [bagTiles, classNames, dealing, id]);
 
   useEffect(() => {
-    if (!dealing && classNames.includes('in-bag')) {
+    if (!dealing && !retrieving.length  && classNames.includes('in-bag')) {
       setClassNames((old) => old.filter((c) => c !== 'in-bag'));
     }
-  }, [bagTiles, classNames, dealing, id]);
+  }, [classNames, dealing, retrieving.length]);
+
+  useEffect(() => {
+    if (!swapTiles.length && classNames.includes('in-swap')) {
+      setClassNames((old) => old.filter((c) => c !== 'in-swap'));
+    }
+  }, [classNames, swapTiles.length]);
 
   useEffect(() => {
     if (!dealing && classNames.includes('hidden')) {
       setClassNames((old) => old.filter((c) => c !== 'hidden'));
     }
-  }, [bagTiles, classNames, dealing, id]);
+  }, [classNames, dealing]);
 
   useEffect(() => {
-    if (!dealing && classNames.includes('tile-base')) {
+    if (!dealing && !retrieving.length && !swapTiles.length && classNames.includes('tile-base')) {
       setClassNames((old) => old.filter((c) => c !== 'tile-base'));
     }
-  }, [classNames, dealing]);
+  }, [classNames, dealing, retrieving.length, swapTiles.length]);
 
   useEffect(() => {
     if (dealing && dealable && bagTiles.includes(id) && !classNames.includes('in-bag') && !classNames.includes('tile-base')) {
@@ -74,6 +80,28 @@ const Tile = ({ sx, letter, id, dealable }) => {
       clearTimeout(delay.current);
     }
   }, [bagTiles, classNames, dealable, dealing, id]);
+
+  useEffect(() => {
+    if (retrieving.length && dealable && bagTiles.includes(id) && !classNames.includes('in-bag')) {
+      setClassNames((old) => {
+        // setTimeout(() => {
+        //   setClassNames((older) => [...older, 'in-bag']);
+        // }, 100);
+        return [...old, 'in-bag']
+      });
+    }
+  }, [bagTiles, classNames, dealable, id, retrieving.length]);
+
+  useEffect(() => {
+    if (swapTiles.length && dealable && swapTiles.includes(id) && !classNames.includes('in-swap')) {
+      setClassNames((old) => {
+        // setTimeout(() => {
+        //   setClassNames((older) => [...older, 'in-bag']);
+        // }, 100);
+        return [...old, 'tile-base', 'in-swap']
+      });
+    }
+  }, [swapTiles, classNames, dealable, id, swapTiles.length]);
 
   useEffect(() => {
     if (dealing) {
@@ -94,7 +122,7 @@ const Tile = ({ sx, letter, id, dealable }) => {
   }, [dealing, id, initialPosition]);
 
   useEffect(() => {
-    if (roundOver && !classNames.includes('tile-base')) {
+    if (retrieving.length && retrieving.includes(id) && !classNames.includes('tile-base')) {
       const domEl = document.getElementById(id);
       if (domEl) {
         const rect = domEl.getBoundingClientRect();
@@ -102,22 +130,23 @@ const Tile = ({ sx, letter, id, dealable }) => {
         const xpos = (bagRect.width / 2) - (rect.width / 2) + bagRect.x;
         const ypos = bagRect.y + 8;
         const init = { left: xpos - rect.x, top: ypos - rect.y };
-        setInitialPosition(`#${id}.in-bag { transform: translate(${init?.left ?? -1000}px, ${init?.top ?? -1000}px); }`);
+        setInitialPosition(`#${id}.in-bag { transform: translate(${init?.left ?? -1000}px, ${init?.top ?? -1000}px); z-index: -1 }`);
       }
       setClassNames((old) => [...old, 'tile-base']);
     }
-  }, [classNames, id, roundOver]);
+  }, [classNames, id, retrieving]);
 
   return (
     <Box
       id={id}
       className={classNames.join(' ')}
       ref={setNodeRef}
-      sx={{ touchAction: 'none', boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, pt: letter.multiplier ? 0.5 : 0,  ...sx }}
+      sx={{ opacity: disabled ? 0.6 : 1, touchAction: 'none', boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, pt: letter.multiplier ? 0.5 : 0,  ...sx }}
       {...listeners}
       {...attributes}
     >
       <style dangerouslySetInnerHTML={{ __html: initialPosition }} />
+      <style dangerouslySetInnerHTML={{ __html: `#${id}.in-swap { transform: translateX(1000px) }` }} />
       {
         letter.multiplier ? (
           <Box sx={{ position: 'absolute', top: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: letter.scope === 'word' ? '#b02bb5' : '#11adab', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
@@ -126,16 +155,19 @@ const Tile = ({ sx, letter, id, dealable }) => {
         ) : null
       }
       {
-        letter.multiplier ? (
+        letter.multiplier || bagTile ? (
           <Tooltip arrow placement="top" title={(
             <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <Typography variant='h6'>{letter.letter}</Typography>
-              <Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} points` : `${letter.multiplier} x word score`}</Typography>
+              {
+                letter.multiplier ? (<Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} ${letter.value !== 1 ? 'points' : 'point'}` : `${letter.multiplier} x word score`}</Typography>)
+                : (<Typography variant='body2'>{letter.value} {letter.value !== 1 ? 'points' : 'point'}</Typography>)
+              }
             </Box>
           )}>
-            <span>
+            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>	
               {displayedLetter}
-            </span>
+            </Box>
           </Tooltip>
         ) : (<span>
           {displayedLetter}
