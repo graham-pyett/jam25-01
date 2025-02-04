@@ -11,6 +11,9 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
   const delay = useRef(null);
   const [initialPosition, setInitialPosition] = useState(null);
 
+  const scoringTileTop = useMemo(() => scoringTiles?.find((t) => t.id === id && t.placement === 'top'), [id, scoringTiles]);
+  const scoringTileLeft = useMemo(() => scoringTiles?.find((t) => t.id === id && t.placement === 'left'), [id, scoringTiles]);
+
   const style = useMemo(() => {
     let newStyle = { border: '1px solid tan', backgroundColor: 'antiquewhite' };
     if (letter.isBlank) {
@@ -105,19 +108,21 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
 
   useEffect(() => {
     if (dealing) {
-      let init = initialPosition;
-      if (init) {
-        return;
-      }
-      const domEl = document.getElementById(id);
-      if (domEl) {
-        const rect = domEl.getBoundingClientRect();
-        const bagRect = document.querySelector('.bag').getBoundingClientRect();
-        const xpos = (bagRect.width / 2) - (rect.width / 2) + bagRect.x;
-        const ypos = bagRect.y + 8;
-        init = { left: xpos - rect.x, top: ypos - rect.y };
-        setInitialPosition(`#${id}.in-bag { transform: translate(${init?.left ?? -1000}px, ${init?.top ?? -1000}px); }`);
-      }
+      setTimeout(() => {
+        let init = initialPosition;
+        if (init) {
+          return;
+        }
+        const domEl = document.getElementById(id);
+        if (domEl) {
+          const rect = domEl.getBoundingClientRect();
+          const bagRect = document.querySelector('.bag').getBoundingClientRect();
+          const xpos = (bagRect.width / 2) - (rect.width / 2) + bagRect.x;
+          const ypos = bagRect.y + 8;
+          init = { left: xpos - rect.x, top: ypos - rect.y };
+          setInitialPosition(`#${id}.in-bag { transform: translate(${init?.left ?? -1000}px, ${init?.top ?? -1000}px); }`);
+        }
+      }, 220);
     }
   }, [dealing, id, initialPosition]);
 
@@ -139,9 +144,9 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
   return (
     <Box
       id={id}
-      className={classNames.join(' ')}
+      className={['general-tile', ...classNames].join(' ')}
       ref={setNodeRef}
-      sx={{ opacity: disabled ? 0.6 : 1, touchAction: 'none', boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, pt: letter.multiplier ? 0.5 : 0,  ...sx }}
+      sx={{ opacity: disabled ? 0.6 : 1, touchAction: 'none', boxSizing: 'border-box', m: '3px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, pt: letter.multiplier ? 0.5 : 0,  ...sx }}
       {...listeners}
       {...attributes}
     >
@@ -176,10 +181,10 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
       <Box sx={{ position: 'absolute', bottom: displayedLetter.length > 2 ? -1 : 1, right: 4, fontSize: '10px', fontFamily: 'Orbitron' }}>
         {letter.value}
       </Box>
-      <Tooltip arrow open={!!scoringTiles?.find((t) => t.id === id && t.placement === 'top')} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTiles?.find((t) => t.id === id && t.placement === 'top')?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>{scoringTiles?.find((t) => t.id === id && t.placement === 'top')?.score >= 0 ? '+' : ''} {scoringTiles?.find((t) => t.id === id && t.placement === 'top')?.score ?? ''}</span>} placement="top">
+      <Tooltip arrow open={!!scoringTileTop} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileTop?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>{scoringTileTop?.score >= 0 ? '+' : ''} {scoringTileTop?.score ?? ''}</span>} placement="top">
         <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
       </Tooltip>
-      <Tooltip arrow open={!!scoringTiles?.find((t) => t.id === id && t.placement === 'left')} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTiles?.find((t) => t.id === id && t.placement === 'left')?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>{scoringTiles?.find((t) => t.id === id && t.placement === 'left')?.score >= 0 ? '+' : ''} {scoringTiles?.find((t) => t.id === id && t.placement === 'left')?.score ?? ''}</span>} placement="left">
+      <Tooltip arrow open={!!scoringTileLeft} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileLeft?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>{scoringTileLeft?.score >= 0 ? '+' : ''} {scoringTileLeft?.score ?? ''}</span>} placement="left">
         <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
       </Tooltip>
     </Box>

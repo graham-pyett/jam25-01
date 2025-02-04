@@ -15,8 +15,6 @@ const GameDataProvider = ({ children }) => {
   const [roundOver, setRoundOver] = useState(false);
   const [turnOver, setTurnOver] = useState(true);
 
-    console.log(scoringTiles);
-
   useEffect(() => {
     if (dealing) {
       bagTiles.forEach((tile, i) => {

@@ -4,10 +4,12 @@ body {
   font-family: 'Nunito Sans', sans-serif!important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10 and IE 11 */
   user-select: none; /* Standard syntax */
+  background-position: center center;
+  background-repeat: repeat;
+  background-attachment: fixed;
 }
 
 
@@ -76,4 +78,22 @@ code {
 .hidden {
   opacity: 0!important;
   /* color: red!important; */
+}
+
+@keyframes widen {
+  from {
+    width: 0;
+  }
+  to {
+    width: 44px;
+  }
+}
+
+.general-tile {
+  animation: widen 0.2s ease-in-out;
+  animation-fill-mode: both;
+}
+
+.general-tile-wide {
+  width: 44px;
 }

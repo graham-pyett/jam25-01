@@ -1,9 +1,10 @@
 import { Box, Tooltip, Typography } from "@mui/material";
-import React from "react";
+import React, { useMemo } from "react";
 import { useGameData } from "../providers/GameDataProvider";
 
 const Joker = ({ sx, joker, id }) => {
   const { scoringTiles } = useGameData();
+  const scoringTile = useMemo(() => scoringTiles?.find((t) => t.id === id) ?? {}, [id, scoringTiles]);
   return (
     <Box
       key={id}
@@ -12,18 +13,21 @@ const Joker = ({ sx, joker, id }) => {
       <Tooltip arrow placement="bottom" title={(
         <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>{joker.name}</Typography>
-          <Typography variant='body2'>{joker.description}</Typography>
+          <Typography variant='body2' sx={{ textAlign: 'center' }}>{joker.description}</Typography>
         </Box>
         )}>
         {joker.text}
       </Tooltip>
-      <Tooltip arrow open={!!(scoringTiles?.find((t) => t.id === id)?.score || scoringTiles?.find((t) => t.id === id)?.newMoney)} title={(
+      <Tooltip arrow open={!!(scoringTile.score || scoringTile.newMoney || scoringTile.text)} title={(
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {scoringTiles?.find((t) => t.id === id)?.score !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTiles?.find((t) => t.id === id)?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
-            {scoringTiles?.find((t) => t.id === id)?.score >= 0 ? '+' : ''} {scoringTiles?.find((t) => t.id === id)?.score ?? ''}
+          {scoringTile.score !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTile.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
+            {scoringTile.score >= 0 ? '+' : ''} {scoringTile.score ?? ''}
           </span>)}
-          {scoringTiles?.find((t) => t.id === id)?.newMoney !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#fffb80'}}>
-            {scoringTiles?.find((t) => t.id === id)?.newMoney >= 0 ? '+' : ''} {scoringTiles?.find((t) => t.id === id)?.newMoney ?? ''}
+          {scoringTile.newMoney !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#fffb80'}}>
+            {scoringTile.newMoney >= 0 ? '+' : ''} {scoringTile.newMoney ?? ''}
+          </span>)}
+          {scoringTile.text && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#b3faaa'}}>
+            {scoringTile.text}
           </span>)}
         </Box>
         )} placement="bottom">
