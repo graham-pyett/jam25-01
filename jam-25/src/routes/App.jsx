@@ -120,6 +120,7 @@ const App = () => {
   const scoreWord = useCallback(async (word, scoreRound) => {
     let baseScore = word.score || word.word.length;
     const bonuses = bonusSpacesRef.current.map((s) => ({ id: s.id, ...BONUSES[s.bonus] }));
+    let newMoney = 0;
     // Tile bonuses first
     word.tiles.forEach((t) => {
       if (t.props.letter.adder) {
@@ -127,6 +128,9 @@ const App = () => {
       }
       if (t.props.letter.multiplier) {
         baseScore *= t.props.letter.multiplier;
+      }
+      if (t.props.letter.money) {
+        newMoney += word.valid ? t.props.letter.money : -t.props.letter.money;
       }
     });
     // Board bonuses
@@ -147,7 +151,8 @@ const App = () => {
       }
     });
     return new Promise((resolve) => setTimeout(async () => {
-      setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, scoreRound, placement: word.orientation === 'horizontal' ? 'left' : 'top' }]);
+      setFunds((old) => old + newMoney);
+      setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, scoreRound, placement: word.orientation === 'horizontal' ? 'left' : 'top', newMoney }]);
       setTimeout(() => {
         setScoringTiles((old) => old.filter((t) => t.id !== word.tiles[0]?.props?.id || t.placement !== (word.orientation === 'horizontal' ? 'left' : 'top') || t.scoreRound !== scoreRound));
       }, 1000);

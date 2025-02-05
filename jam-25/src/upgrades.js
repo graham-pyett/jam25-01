@@ -16,6 +16,7 @@ export const BONUSES = {
   BP1: { rarity: 1, price: 4, name: '+1 Letter Space', description: 'Increase the base score of any word played on it by one', text: '+1L', multiplier: 0, adder: 1, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(224, 88, 70, 0.4)', border: '4px double rgb(224, 88, 70)' }, threshhold: 4 },
   BP3: { rarity: 2, price: 6, name: '+3 Letter Space', description: 'Increase the base score of any word played on it by three', text: '+3L', multiplier: 0, adder: 3, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(230, 53, 97, 0.4)', border: '4px double rgb(230, 53, 97)' }, threshhold: 4 },
   BP5: { rarity: 3, price: 8, name: '+5 Letter Space', description: 'Increase the base score of any word played on it by five', text: '+5L', multiplier: 0, adder: 5, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(166, 113, 227, 0.4)', border: '4px double rgb(166, 113, 227)' }, threshhold: 4 },
+  TM1: { rarity: 3, price: 3, name: '+$1', description: 'Place this upgrade on a tile to earn $1 every time it is scored', text: '+$1', money: 1, multiplier: 0, adder: 0, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(214, 168, 0, 0.4)', border: '4px double rgb(214, 168, 0)' }, threshhold: 4 },
 };
 
 export const JOKERS = [
