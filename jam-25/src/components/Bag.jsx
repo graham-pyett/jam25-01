@@ -1,14 +1,13 @@
 import { Box, Button, Dialog, DialogContent, Typography, useMediaQuery } from "@mui/material";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import Tile from "./Tile";
 import { v4 } from "uuid";
 
-const Bag = ({ bag, getAllTiles, allTiles }) => {
+const Bag = ({ bag, getAllTiles, allTiles, bagOpen, setBagOpen, handleSwapChoice }) => {
   const matches = useMediaQuery('(max-width:900px)');
-  const [bagOpen, setBagOpen] = useState(false);
   const bagContents = useMemo(() => {
     if (bagOpen) {
-    return getAllTiles() ?? [];
+      return getAllTiles() ?? [];
     }
     return [];
   }, [bagOpen, getAllTiles]);
@@ -23,9 +22,14 @@ const Bag = ({ bag, getAllTiles, allTiles }) => {
             <Typography variant="overline" sx={{ fontFamily: 'Orbitron' }}>Bag Contents</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
               {
-                bagContents.map((tile) => (
-                  <Tile letter={{ ...tile, id: v4() }} bagTile disabled={!allTiles.find((t) => t.props.id === tile.id)} />
-                ))
+                bagContents.map((tile) => {
+                  const newId = v4();
+                  return (
+                    <Button key={tile.id} onClick={() => handleSwapChoice(tile)} sx={{ m: 0, p: 0, minWidth: 0, color: 'unset!important' }}>
+                      <Tile letter={{ ...tile, id: newId }} id={newId} bagTile disabled={!allTiles.find((t) => t.props.id === tile.id)} />
+                    </Button>
+                  );
+                })
               }
             </Box>
             <Box sx={{ mt: 2 }}>

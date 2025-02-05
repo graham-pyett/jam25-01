@@ -5,7 +5,7 @@ import { useGameData } from "../providers/GameDataProvider";
 
 const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
   const { blanks, fixedTiles, scoringTiles, bagTiles, dealing, turnOver, retrieving, swapTiles } = useGameData();
-  const { attributes, listeners, setNodeRef } = useDraggable({ id, disabled: turnOver || dealing || retrieving.length || swapTiles.length || fixedTiles?.includes(id) || scoringTiles.length, data: { type: 'tile' } });
+  const { attributes, listeners, setNodeRef } = useDraggable({ id, disabled: bagTile || turnOver || dealing || retrieving.length || swapTiles.length || fixedTiles?.includes(id) || scoringTiles.length, data: { type: 'tile' } });
   const displayedLetter = useMemo(() => blanks?.[id] ?? letter.letter, [blanks, id, letter.letter]);
   const [classNames, setClassNames] = useState(['hidden']);
   const delay = useRef(null);
@@ -155,19 +155,27 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
       {
         letter.multiplier ? (
           <Box sx={{ position: 'absolute', top: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: letter.scope === 'word' ? '#b02bb5' : '#11adab', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
-            {`x${letter.multiplier}`}
+            x{letter.multiplier}
           </Box>
         ) : null
       }
       {
-        letter.multiplier || bagTile ? (
+        letter.rarity ? (
+          <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][letter.rarity], px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+            {['C', 'U', 'R', 'S'][letter.rarity]}
+          </Box>
+        ) : null
+      }
+      {
+        letter.multiplier || letter.rarity || bagTile ? (
           <Tooltip arrow placement="top" title={(
             <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Typography variant='h6'>{letter.letter}</Typography>
+              <Typography variant='h6' sx={{ fontFamily: 'Orbitron'}}>{letter.letter}</Typography>
               {
                 letter.multiplier ? (<Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} ${letter.value !== 1 ? 'points' : 'point'}` : `${letter.multiplier} x word score`}</Typography>)
                 : (<Typography variant='body2'>{letter.value} {letter.value !== 1 ? 'points' : 'point'}</Typography>)
               }
+              <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 8 }}>{letter.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][letter.rarity] : 'Common'}</Typography>
             </Box>
           )}>
             <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>	

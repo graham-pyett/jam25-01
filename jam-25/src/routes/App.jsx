@@ -105,8 +105,17 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
-  const [jokers, setJokers] = useState([]); // <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
+  const [jokers, setJokers] = useState([<Joker joker={JOKERS[16]} id={JOKERS[16].id} />]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
   const [maxJokers, setMaxJokers] = useState(5);
+  const [bagOpen, setBagOpenRaw] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+
+  const setBagOpen = useCallback((open) => {
+    if (!open) {
+      setIsSwapping(false);
+    }
+    setBagOpenRaw(open);
+  }, []);
 
   const scoreWord = useCallback(async (word, scoreRound) => {
     let baseScore = word.score || word.word.length;
@@ -151,6 +160,8 @@ const App = () => {
     return jokers.filter((j) => j.props?.joker?.global);
   }, [jokers]);
 
+  const choosy = useMemo(() => !!getGlobalJokers().find((j) => j.props?.joker?.global?.choosy), [getGlobalJokers]);
+ 
   const score = useCallback(async (newWords, scoreRound = 0) => {
     const validScore = await newWords.filter((w) => w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     const invalidScore = await newWords.filter((w) => !w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
@@ -342,7 +353,7 @@ const App = () => {
           if (newTotalScore >= target) {
             setFixedTiles([]);
             setBlanks({});
-            setAllTiles(tileLibrary.current);
+            // setAllTiles(tileLibrary.current);
             setRoundOver(true);
             setGlobalRoundOver(false);
           } else {
@@ -370,24 +381,26 @@ const App = () => {
   }, [availableTiles]);
 
   const handleDragEnd = useCallback((event) => {
-    if (event.over?.id && event.over.id !== 'tray' && event.over.id !== 'swapper') {
-      const row = parseInt(event.over.id.split(',')[0]);
-      const col = parseInt(event.over.id.split(',')[1]);
-      setGridArray((old) => old.map((r, i) => r.map((c, j) => {
-        if (i === row && j === col) {
-          if (activeTile.props.letter.isBlank) {
-            setBlankPickerOpen(true);
+    if (activeTile) {
+      if (event.over?.id && event.over.id !== 'tray' && event.over.id !== 'swapper') {
+        const row = parseInt(event.over.id.split(',')[0]);
+        const col = parseInt(event.over.id.split(',')[1]);
+        setGridArray((old) => old.map((r, i) => r.map((c, j) => {
+          if (i === row && j === col) {
+            if (activeTile.props.letter.isBlank) {
+              setBlankPickerOpen(true);
+            }
+            return {...c, tile: activeTile };
           }
-          return {...c, tile: activeTile };
-        }
-        return c;
-      })));
-    } else if (event.over?.id && event.over.id === 'swapper') {
-      setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
-      setSwapArray((old) => [...old, activeTile]);
-    } else {
-      setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
-      setTrayArray((old) => [...old, activeTile]);
+          return c;
+        })));
+      } else if (event.over?.id && event.over.id === 'swapper') {
+        setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
+        setSwapArray((old) => [...old, activeTile]);
+      } else {
+        setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
+        setTrayArray((old) => [...old, activeTile]);
+      }
     }
   }, [activeTile, setBlanks]);
 
@@ -411,7 +424,7 @@ const App = () => {
 
   const handleUpgrade = useCallback((tile, upgrade) => {
     if (upgrade.placement === 'tile') {
-      const newTile = { ...tile, ...upgrade, value: tile.value + upgrade.adder, id: tile.id };
+      const newTile = { ...tile, ...upgrade, rarity: Math.min(Math.ceil((tile.rarity + upgrade.rarity) / 2), 3), value: tile.value + upgrade.adder, id: tile.id };
       tileLibrary.current = tileLibrary.current.filter((t) => t.id !== tile.id);
       tileLibrary.current.push(newTile);
       setInventory((old) => old.filter((t) => t.props.item.id !== upgrade.id));
@@ -517,22 +530,27 @@ const App = () => {
   const handleOpenShop = useCallback(() => {
     setFunds((old) => getNewFunds().total + old)
     const newAvailableUpgrades = [];
+    const bonusesWithRarity = Object.keys(BONUSES).map((b) => Array(4 - BONUSES[b].rarity).fill({ ...BONUSES[b], key: b })).flat();
     for (let i = 0; i < 2; i++) {
-      const keys = Object.keys(BONUSES);
+      const keys = Object.keys(bonusesWithRarity);
       const key = keys[Math.floor(Math.random() * keys.length)];
-      newAvailableUpgrades.push({ id: v4(), key, ...BONUSES[key] });
+      newAvailableUpgrades.push({ id: v4(), ...bonusesWithRarity[key] });
     }
     const newAvailableUpgradeTiles = [];
+    const bonuseLettersWithRarity = BONUS_LETTERS.map((b) => Array(4 - b.rarity).fill(b)).flat();
     for (let i = 0; i < 3; i++) {
-      const keys = Object.keys(BONUS_LETTERS);
+      const keys = Object.keys(bonuseLettersWithRarity);
       const key = keys[Math.floor(Math.random() * keys.length)];
-      newAvailableUpgradeTiles.push({ key, ...BONUS_LETTERS[key], price: BONUS_LETTERS[key].price ?? BONUS_LETTERS[key].value, id: v4() });
+      newAvailableUpgradeTiles.push({ key, ...bonuseLettersWithRarity[key], price: bonuseLettersWithRarity[key].price ?? bonuseLettersWithRarity[key].value, id: v4() });
     }
-    const keys = Object.keys(BONUS_LETTERS);
+    const keys = Object.keys(bonuseLettersWithRarity);
     const key = keys[Math.floor(Math.random() * keys.length)];
-    const bonusKeys = Object.keys(BONUSES).filter((b) => BONUSES[b].placement === 'tile');
+    const filteredBonuses = bonusesWithRarity.filter((b) => b.placement === 'tile')
+    const bonusKeys = Object.keys(filteredBonuses);
     const bonusKey = bonusKeys[Math.floor(Math.random() * bonusKeys.length)];
-    newAvailableUpgradeTiles.push({ key, ...BONUSES[bonusKey], ...BONUS_LETTERS[key], value: (BONUSES[bonusKey].adder ?? 0) + BONUS_LETTERS[key].value, name: `${BONUSES[bonusKey].name} - ${BONUS_LETTERS[key].letter}`, price: Math.floor((BONUS_LETTERS[key].price ?? BONUS_LETTERS[key].value) - 2 + BONUSES[bonusKey].price), id: v4() });
+    const selectedBonus = filteredBonuses[bonusKey];
+    const selectedLetter = bonuseLettersWithRarity[key];
+    newAvailableUpgradeTiles.push({ key, ...selectedBonus, ...selectedLetter, rarity: Math.min(Math.ceil((selectedBonus.rarity + selectedLetter.rarity) / 2), 3), value: (selectedBonus.adder ?? 0) + selectedLetter.value, name: `${selectedBonus.name} - ${selectedLetter.letter}`, price: Math.floor((selectedLetter.price ?? selectedLetter.value) - 2 + selectedBonus.price), id: v4() });
     const newAvailableJokers = [];
     for (let i = 0; i < 2; i++) {
       const keys = Object.keys(JOKERS);
@@ -610,31 +628,53 @@ const App = () => {
     turnScores.current = [];
   }, []);
 
-  const handleSwap = useCallback(() => {
-    if (swaps > 0) {
+  const doSwap = useCallback((drawn) => {
+    setBag(allTiles.length - drawn.length);
+    const newTray = [...trayArray, ...drawn];
+    const gridTiles = [];
+    gridArray.forEach((row) => row.forEach((col) => {
+      if (col.tile) {
+        gridTiles.push(col.tile);
+      }
+    }));
+    setAvailableTiles([...newTray, ...gridTiles]);
+    setAllTiles((old) => old.filter((o) => !drawn.map((d) => d.props.id).includes(o.props.id)));
+    setTrayArray(newTray);
+    setBagTiles(drawn.map((t) => t.props.id));
+    setDealing(true);
+    setSwapArray([]);
+    setSwapTiles([]);
+    setSwaps((old) => old - 1);
+  }, [allTiles.length, gridArray, setBagTiles, setDealing, setSwapTiles, trayArray]);
+
+  const handleSwapChoice = useCallback((tile) => {
+    if (choosy && isSwapping) {
+      setBagOpenRaw(false);
       setSwapTiles(swapArray.map((t) => t.props.id));
       setTimeout(() => {
-        const ttd = swapArray.length;
-        const drawn = allTiles.slice(0, ttd);
-        setBag(allTiles.length - ttd);
-        const newTray = [...trayArray, ...drawn];
-        const gridTiles = [];
-        gridArray.forEach((row) => row.forEach((col) => {
-          if (col.tile) {
-            gridTiles.push(col.tile);
-          }
-        }));
-        setAvailableTiles([...newTray, ...gridTiles]);
-        setAllTiles((old) => old.slice(ttd));
-        setTrayArray(newTray);
-        setBagTiles(drawn.map((t) => t.props.id));
-        setDealing(true);
-        setSwapArray([]);
-        setSwapTiles([]);
-        setSwaps((old) => old - 1);
-      }, 600 + (swapArray.length * 100));
+        const tileIndex = allTiles.findIndex((t) => t.props.id === tile.id);
+        const drawn = allTiles.slice(tileIndex, tileIndex + 1);
+        doSwap(drawn);
+        setIsSwapping(false);
+      }, 800);
     }
-  }, [swaps, setSwapTiles, swapArray, allTiles, trayArray, gridArray, setBagTiles, setDealing])
+  }, [allTiles, choosy, doSwap, isSwapping, setSwapTiles, swapArray]);
+
+  const handleSwap = useCallback(() => {
+    if (swaps > 0 && swapArray.length) {
+      if (choosy) {
+        setIsSwapping(true);
+        setBagOpen(true);
+      } else {
+        setSwapTiles(swapArray.map((t) => t.props.id));
+        setTimeout(() => {
+          const ttd = swapArray.length;
+          const drawn = allTiles.slice(0, ttd);
+          doSwap(drawn);
+        }, 600);
+      }
+    }
+  }, [allTiles, choosy, doSwap, setBagOpen, setSwapTiles, swapArray, swaps])
 
   const steps = useMemo(() => [
     {
@@ -923,13 +963,13 @@ const App = () => {
           <Box sx={{ zIndex: 3, width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', bottom: 0, mb: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
             <InfoPanel swaps={swaps} turn={currentTurn} turns={turns} money={funds} />
             <Tray tiles={trayArray} />
-            <Swapper tiles={swapArray} handleSwap={handleSwap} swaps={swaps} />
+            <Swapper tiles={swapArray} choosy={choosy} handleSwap={handleSwap} swaps={swaps} />
           </Box>
           <DragOverlay>
             { activeTile }
           </DragOverlay>
           <Box sx={{ zIndex: 3, width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'center', position: 'fixed', top: 0, mt: matches ? 0 : 2, left: '50%', transform: 'translateX(-50%)', flexWrap: 'wrap' }}>
-            <Bag bag={bag} getAllTiles={getAllTiles} allTiles={allTiles} />
+            <Bag bagOpen={bagOpen} setBagOpen={setBagOpen} bag={bag} getAllTiles={getAllTiles} allTiles={allTiles} handleSwapChoice={handleSwapChoice} />
             <Score score={totalScore} target={target} round={round} turnScore={turnScore} />
             <Submit onSubmit={endTurn} disabled={submitDisabled} />
           </Box>
