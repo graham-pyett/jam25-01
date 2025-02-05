@@ -94,8 +94,6 @@ const App = () => {
   const turnScores = useRef([]);
   const [totalScore, setTotalScore] = useState(0);
   const [turnScore, setTurnScore] = useState(null);
-  const scoreTimeouts = useRef([]);
-  const scoreCount = useRef(0);
   const [round, setRound] = useState(0);
   const [roundOver, setRoundOver] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -107,10 +105,10 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
-  const [jokers, setJokers] = useState([]); // <Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
+  const [jokers, setJokers] = useState([]); // <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
   const [maxJokers, setMaxJokers] = useState(5);
 
-  const scoreWord = useCallback((word, scoreRound) => {
+  const scoreWord = useCallback(async (word, scoreRound) => {
     let baseScore = word.score || word.word.length;
     const bonuses = bonusSpacesRef.current.map((s) => ({ id: s.id, ...BONUSES[s.bonus] }));
     // Tile bonuses first
@@ -139,44 +137,44 @@ const App = () => {
         baseScore *= b.multiplier === 0 ? 1 : b.multiplier;
       }
     });
-    scoreTimeouts.current.push(setTimeout(() => {
+    return new Promise((resolve) => setTimeout(async () => {
       setScoringTiles((old) => [...old, { id: word.tiles[0]?.props?.id, score: word?.valid ? baseScore : -baseScore, scoreRound, placement: word.orientation === 'horizontal' ? 'left' : 'top' }]);
-      setTurnScore((old) => (old ?? 0) + (word?.valid ? baseScore : -baseScore));
       setTimeout(() => {
         setScoringTiles((old) => old.filter((t) => t.id !== word.tiles[0]?.props?.id || t.placement !== (word.orientation === 'horizontal' ? 'left' : 'top') || t.scoreRound !== scoreRound));
       }, 1000);
-    }, (scoreCount.current++) * 500));
-    return baseScore;
+      await new Promise((resolve) => setTimeout(() => { setTurnScore((old) => (old ?? 0) + (word?.valid ? baseScore : -baseScore)); resolve(); }, Math.max(500 - (scoreRound * 200), 100)));
+      resolve(baseScore);
+    }, Math.max(500 - (scoreRound * 200), 200)));
   }, [gridArray, setScoringTiles]);
 
   const getGlobalJokers = useCallback(() => {
     return jokers.filter((j) => j.props?.joker?.global);
   }, [jokers]);
 
-  const score = useCallback((newWords, scoreRound = 0) => {
-    const validScore = newWords.filter((w) => w.valid).reduce((acc, w) => acc + scoreWord(w, scoreRound), 0);
-    const invalidScore = newWords.filter((w) => !w.valid).reduce((acc, w) => acc + scoreWord(w, scoreRound), 0);
+  const score = useCallback(async (newWords, scoreRound = 0) => {
+    const validScore = await newWords.filter((w) => w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
+    const invalidScore = await newWords.filter((w) => !w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     let currentScore = validScore - invalidScore;
-    jokers.filter((j) => j.action).forEach((j) => {
+    await Promise.all(jokers.filter((j) => j.action).map(async (j) => {
       const { newScore, newMoney, delta } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore, target, funds }) ?? { newScore: currentScore, newMoney: 0, delta: 0 };
-      scoreTimeouts.current.push(setTimeout(() => {
-        setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0, scoreRound }]);
-        setTurnScore((old) => (old ?? 0) + delta);
-        setTimeout(() => {
-          setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id || t.scoreRound !== scoreRound));
-        }, 1000);
-      }, (scoreCount.current++) * 500));
-      currentScore = newScore;
-      setFunds((old) => old + (newMoney ?? 0));
-    });
+      await new Promise((resolve) => setTimeout(() => {
+          setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0, scoreRound }]);
+          setTurnScore((old) => (old ?? 0) + delta);
+          setFunds((old) => old + (newMoney ?? 0));
+          setTimeout(() => {
+            setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id || t.scoreRound !== scoreRound));
+          }, 1000);
+          currentScore = newScore;
+          resolve();
+        }, Math.max(500 - (scoreRound * 200), 200))
+      );
+    }));
     turnScores.current[currentTurnRef.current] = currentScore;
     return currentScore;
   }, [funds, gridArray, jokers, scoreWord, setScoringTiles, target, words]);
 
   const start = useCallback(() => {
     setRetrieving([]);
-    scoreTimeouts.current = [];
-    scoreCount.current = 0;
     tilesOnBoard.current = [];
     initialPositions.current = {};
     const ttd = tilesToDrawRef.current + (getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.draws ?? 0), 0));
@@ -274,31 +272,30 @@ const App = () => {
     return newFoundWords;
   }, [blanks, fixedTiles, gridArray]);
 
-  const endTurn = useCallback(() => {
+  const endTurn = useCallback(async () => {
     setTurnOver(true);
     const newWords = checkForWords();
-    let newTurnScore = score(newWords);
+    let newTurnScore = await score(newWords);
     const thisTurn = currentTurnRef.current;
-    let numJokers = 0;
     if (thisTurn === turns - 1) {
-      numJokers = getGlobalJokers()?.filter((j) => j.props?.joker?.global?.rescore).length;
-      getGlobalJokers()?.filter((j) => j.props?.joker?.global?.rescore).forEach((j, i) => {
-        scoreTimeouts.current.push(setTimeout(() => {
+      await Promise.all(getGlobalJokers()?.filter((j) => j.props?.joker?.global?.rescore).map(async (j, i) => {
+        await new Promise((resolve) => setTimeout(async () => {
           setScoringTiles((old) => [...old, { id: j.props?.id, placement: 'bottom', scoreRound: i, text: 'Again!' }]);
           setTimeout(() => {
             setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id || t.scoreRound !== i));
           }, 1000);
-          newTurnScore += score(newWords, i + 1);
-        }, (scoreCount.current++) * 500));
-      });
+          newTurnScore += await score(newWords, i + 1);
+          resolve();
+        }, 500));
+      }));
     }
     const newTotalScore = totalScore + newTurnScore;
-    const getNewTotalScore = () => totalScore + newTurnScore;
     setWords((old) => { old[thisTurn] = newWords; return old; })
-    scoreTimeouts.current.push(setTimeout(() => {
-      setTotalScore(getNewTotalScore());
+    await new Promise((resolve) => setTimeout(() => {
+      setTotalScore(newTotalScore);
       setTurnScore(null);
-    }, (((scoreCount.current * 500) + (1000 * (numJokers + 1))))));
+      resolve();
+    }, 1500));
     const newFixedTiles = [];
     gridArray.forEach((row) => row.forEach((col) => {
       if (col.tile) {
@@ -310,7 +307,7 @@ const App = () => {
 
     currentTurnRef.current++;
       if (newTotalScore < target && currentTurnRef.current < turns) {
-        scoreTimeouts.current.push(setTimeout(() => {
+        await new Promise((resolve) => setTimeout(() => {
           setCurrentTurn((old) => old + 1);
           const ttd = (tilesToDrawRef.current + getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.draws ?? 0), 0)) - trayArray.length - swapArray.length;
           const drawn = allTiles.slice(0, ttd);
@@ -322,8 +319,6 @@ const App = () => {
           setBagTiles(drawn.map((t) => t.props.id));
           setDealing(true);
           setSwapArray([]);
-          scoreTimeouts.current = [];
-          scoreCount.current = 0;
           bonusSpacesRef.current.forEach((b) => {
             const [row, col] = b.id.split(',').map((n) => parseInt(n));
             setGridArray((old) => old.map((r, i) => r.map((c, j) => {
@@ -333,30 +328,29 @@ const App = () => {
               return c;
             })));
           });
-        }, ((scoreCount.current * 500) + (1000 * (numJokers + 1)) + 500)));
+          resolve();
+        }, 800));
       } else {
         tilesOnBoard.current.push(...trayArray.map((t) => t.props.id));
-        scoreTimeouts.current.push(setTimeout(() => {
+        await new Promise((resolve) => setTimeout(() => {
           setRetrieving(tilesOnBoard.current);
           setGlobalRoundOver(true);
-        }, ((scoreCount.current * 500) + (1000 * (numJokers + 1)) + 300)));
+          resolve();
+        }, 300));
         // Round over
-        scoreTimeouts.current.push(setTimeout(() => {
-          if (getNewTotalScore() >= target) {
+        await new Promise((resolve) => setTimeout(() => {
+          if (newTotalScore >= target) {
             setFixedTiles([]);
             setBlanks({});
             setAllTiles(tileLibrary.current);
             setRoundOver(true);
             setGlobalRoundOver(false);
-            scoreTimeouts.current = [];
-            scoreCount.current = 0;
           } else {
             setGameOver(true);
             setGlobalRoundOver(false);
-            scoreTimeouts.current = [];
-            scoreCount.current = 0;
           }
-        }, ((scoreCount.current * 500) + (1000 * (numJokers + 1)) + 1000)));
+          resolve();
+        }, 800));
         
       }
   }, [allTiles, checkForWords, getGlobalJokers, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setRetrieving, setScoringTiles, setTurnOver, swapArray, target, totalScore, trayArray, turns]);
@@ -600,8 +594,6 @@ const App = () => {
   }, [gridSizeY, gridSizeX, handleNextRound, inventory.length]);
 
   const handleGameOver = useCallback(() => {
-    scoreTimeouts.current = [];
-    scoreCount.current = 0;
     const newGridSize = 7;
     setGridSizeY(newGridSize);
     setGridSizeY(newGridSize);
