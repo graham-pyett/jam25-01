@@ -9,11 +9,11 @@ const Score = ({ score, target, round, turnScore }) => {
         <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Round {round}</Typography>
         <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', flexWrap: 'wrap' }}>
           <Typography variant='h4' sx={{ mr: 1, fontSize: matches ? `${Math.max(Math.min(30 / (score?.toString().length ?? 1) * 2 + 5, 25), 14)}px` : undefined, color: score >= target ? '#11adab' : (score < 0 ? 'rgb(158, 8, 28)' : '#5a6363'), fontFamily: 'Orbitron' }}>{score}</Typography>
-          {/* {
-            turnScore != null && ( */}
-              <Typography variant='h5' sx={{ fontSize: matches ? `${Math.max(Math.min(30 / (turnScore?.toString().length ?? 1) * 2, 16), 12)}px` : undefined, color: turnScore + score >= target ? '#11adab' : (turnScore < 0 ? 'rgb(158, 8, 28)' : '#5a6363'), fontFamily: 'Orbitron' }}>{turnScore >= 0 ? '+' : ''} {turnScore}100</Typography>
-            {/* )
-          } */}
+          {
+            turnScore != null && (
+              <Typography variant='h5' sx={{ fontSize: matches ? `${Math.max(Math.min(30 / (turnScore?.toString().length ?? 1) * 2, 16), 12)}px` : undefined, color: turnScore + score >= target ? '#11adab' : (turnScore < 0 ? 'rgb(158, 8, 28)' : '#5a6363'), fontFamily: 'Orbitron' }}>{turnScore >= 0 ? '+' : ''} {turnScore}</Typography>
+            )
+          }
         </Box>
       </Box>
       <Box className="target" sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
