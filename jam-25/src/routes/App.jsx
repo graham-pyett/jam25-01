@@ -155,7 +155,7 @@ const App = () => {
     const validScore = await newWords.filter((w) => w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     const invalidScore = await newWords.filter((w) => !w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     let currentScore = validScore - invalidScore;
-    await Promise.all(jokers.filter((j) => j.action).map(async (j) => {
+    await Promise.all(jokers.filter((j) => j.props?.joker?.action).map(async (j) => {
       const { newScore, newMoney, delta } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore, target, funds }) ?? { newScore: currentScore, newMoney: 0, delta: 0 };
       await new Promise((resolve) => setTimeout(() => {
           setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0, scoreRound }]);

@@ -182,8 +182,8 @@ export const JOKERS = [
       validScore,
       invalidScore
     }) => {
-      const newValid = validScore * 3;
-      const newInvalid = invalidScore * 3;
+      const newValid = validScore * 2;
+      const newInvalid = invalidScore * 2;
       return {
         newScore: totalScore + (newValid - newInvalid),
         delta: (newValid - newInvalid),
