@@ -291,8 +291,6 @@ const App = () => {
           newTurnScore += score(newWords, i + 1);
         }, (scoreCount.current++) * 500));
       });
-    } else {
-      
     }
     const newTotalScore = totalScore + newTurnScore;
     const getNewTotalScore = () => totalScore + newTurnScore;
@@ -911,7 +909,7 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '260px' : undefined }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '300px' : undefined }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           {
             jokers?.length > 0 && (
