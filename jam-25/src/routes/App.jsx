@@ -24,6 +24,7 @@ import Joker from "../components/Joker";
 import JokerSpace from "../components/JokerSpace";
 import { useUser } from "../providers/UserProvider";
 import Bag from "../components/Bag";
+import Blank from "../components/Blank";
 
 const calcTarget = (round) => {
   return Math.round(
@@ -105,7 +106,7 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
-  const [jokers, setJokers] = useState([<Joker joker={JOKERS[16]} id={JOKERS[16].id} />]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
+  const [jokers, setJokers] = useState([]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
   const [maxJokers, setMaxJokers] = useState(5);
   const [bagOpen, setBagOpenRaw] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -374,8 +375,13 @@ const App = () => {
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
     setActiveTile(newActiveTile);
-    setTrayArray((old) => [...old.filter((t) => t.props.id !== event.active.id)]);
-    setSwapArray((old) => [...old.filter((t) => t.props.id !== event.active.id)]);
+    setTrayArray((old) => {
+      const oldIndex = old.findIndex((t) => t.props.id === event.active.id);
+      const filtered = old.filter((t) => t.props.id !== event.active.id);
+      filtered.splice(oldIndex, 0, <Blank key={`blank_space_${v4()}`} id={`blank_space_${v4()}`} />);
+      return filtered;
+    });
+    setSwapArray((old) => old.filter((t) => t.props.id !== event.active.id));
     setGridArray((old) => old.map((r) => r.map((c) => {
       if (c.tile === newActiveTile) {
         return { ...c, tile: null };
@@ -385,9 +391,28 @@ const App = () => {
 
   }, [availableTiles]);
 
-  const handleDragEnd = useCallback((event) => {
+  const handleDragMove = useCallback((event) => {
     if (activeTile) {
-      if (event.over?.id && event.over.id !== 'tray' && event.over.id !== 'swapper') {
+      if (event.over?.id && !event.over.id.startsWith('blank_space') && trayArray.map((t) => [`${t.props.id}-left`, `${t.props.id}-right`]).flat().includes(event.over.id)) {
+        setTrayArray((old) => {
+          const filtered = old.filter((t) => !t.props.id.startsWith('blank_space'));
+          if (event.over.id.endsWith('-left')) {
+            filtered.splice(filtered.findIndex((t) => `${t.props.id}-left` === event.over.id) + 1, 0, <Blank key={`blank_space_${v4()}`} id={`blank_space_${v4()}`} />);
+          } else {
+            filtered.splice(filtered.findIndex((t) => `${t.props.id}-right` === event.over.id), 0, <Blank key={`blank_space_${v4()}`} id={`blank_space_${v4()}`} />);
+          }
+          return filtered;
+        });
+      } else if (!event.over?.id?.startsWith('blank_space')) {
+        setTrayArray((old) => old.filter((t) => !t.props.id.startsWith('blank_space')));
+      }
+    }
+  }, [activeTile, trayArray]);
+
+  const handleDragEnd = useCallback((event) => {
+    let newTray = [...trayArray];
+    if (activeTile) {
+      if (event.over?.id && !event.collisions.map((c) => c.id).includes('tray') && !event.collisions.map((c) => c.id).includes('swapper') && !event.over.id.startsWith('blank_space') && !event.over.id.endsWith('-left') && !event.over.id.endsWith('-right')) {
         const row = parseInt(event.over.id.split(',')[0]);
         const col = parseInt(event.over.id.split(',')[1]);
         setGridArray((old) => old.map((r, i) => r.map((c, j) => {
@@ -399,15 +424,22 @@ const App = () => {
           }
           return c;
         })));
-      } else if (event.over?.id && event.over.id === 'swapper') {
+      } else if (event.over?.id && event.collisions.map((c) => c.id).includes('swapper')) {
         setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
         setSwapArray((old) => [...old, activeTile]);
+      } else if (event.over?.id && (event.over.id.startsWith('blank_space') || event.over.id.endsWith('-left') || event.over.id.endsWith('-right'))) {
+        setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
+        const blankInd = newTray.findIndex((t) => t.props.id.startsWith('blank_space'));
+        newTray.splice(blankInd >= 0 ? blankInd : newTray.length, 1, activeTile);
+        newTray = newTray.filter((t) => !t.props.id.startsWith('blank_space'));
       } else {
         setBlanks((old) => ({ ...old, [activeTile.props.id]: undefined }));
-        setTrayArray((old) => [...old, activeTile]);
+        newTray = [...newTray.filter((t) => !t.props.id.startsWith('blank_space')), activeTile];
       }
     }
-  }, [activeTile, setBlanks]);
+    const uniqueTray = [...new Set(newTray.map((t) => t.props.id))];
+    setTrayArray(newTray.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
+  }, [activeTile, setBlanks, trayArray]);
 
   const submitDisabled = useMemo(() => {
     return !gridArray.flat().some((t) => t.tile && !fixedTiles.includes(t.tile.props.id));
@@ -945,7 +977,7 @@ const App = () => {
           </Box>
         </DialogContent>
       </Dialog>
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragMove={handleDragMove}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '300px' : undefined }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           {

@@ -85,7 +85,7 @@ code {
     width: 0;
   }
   to {
-    width: 44px;
+    width: 50px;
   }
 }
 
@@ -95,5 +95,5 @@ code {
 }
 
 .general-tile-wide {
-  width: 44px;
+  width: 44px!important;
 }

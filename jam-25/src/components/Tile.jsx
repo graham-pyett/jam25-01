@@ -1,10 +1,12 @@
 import { Box, Tooltip, Typography } from "@mui/material";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useGameData } from "../providers/GameDataProvider";
 
 const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
   const { blanks, fixedTiles, scoringTiles, bagTiles, dealing, turnOver, retrieving, swapTiles } = useGameData();
+  const { attributes: dropLeftAttr, listeners: dropLeftList, setNodeRef: setNodeRefDropLeft } = useDroppable({ id: `${id}-left`, data: { accepts: 'tile' } });
+  const { attributes: dropRightAttr, listeners: dropRightList, setNodeRef: setNodeRefDropRight } = useDroppable({ id: `${id}-right`, data: { accepts: 'tile' } });
   const { attributes, listeners, setNodeRef } = useDraggable({ id, disabled: bagTile || turnOver || dealing || retrieving.length || swapTiles.length || fixedTiles?.includes(id) || scoringTiles.length, data: { type: 'tile' } });
   const displayedLetter = useMemo(() => blanks?.[id] ?? letter.letter, [blanks, id, letter.letter]);
   const [classNames, setClassNames] = useState(['hidden']);
@@ -146,76 +148,80 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
       id={id}
       className={['general-tile', ...classNames].join(' ')}
       ref={setNodeRef}
-      sx={{ opacity: disabled ? 0.6 : 1, touchAction: 'none', boxSizing: 'border-box', m: '3px', height: '44px', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, pt: letter.multiplier ? 0.5 : 0,  ...sx }}
+      sx={{ touchAction: 'none', height: '50px', position: 'relative' }}
       {...listeners}
       {...attributes}
     >
       <style dangerouslySetInnerHTML={{ __html: initialPosition }} />
       <style dangerouslySetInnerHTML={{ __html: `#${id}.in-swap { transform: translateX(1000px) }` }} />
-      {
-        letter.multiplier ? (
-          <Box sx={{ position: 'absolute', top: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: letter.scope === 'word' ? '#b02bb5' : '#11adab', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
-            x{letter.multiplier}
-          </Box>
-        ) : null
-      }
-      {
-        letter.rarity ? (
-          <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][letter.rarity], px: '3px', borderRadius: '4px 2px 2px 2px' }}>
-            {['C', 'U', 'R', 'S'][letter.rarity]}
-          </Box>
-        ) : null
-      }
-      {
-        letter.money ? (
-          <Box sx={{ position: 'absolute', bottom: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: '#a17e02', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
-            ${letter.money}
-          </Box>
-        ) : null
-      }
-      {
-        letter.multiplier || letter.rarity || letter.money || bagTile ? (
-          <Tooltip arrow placement="top" title={(
-            <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Typography variant='h6' sx={{ fontFamily: 'Orbitron'}}>{letter.letter}</Typography>
-              {
-                letter.multiplier ? (<Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} ${letter.value !== 1 ? 'points' : 'point'}` : `${letter.multiplier} x word score`}</Typography>)
-                : (<Typography variant='body2'>{letter.value} {letter.value !== 1 ? 'points' : 'point'}</Typography>)
-              }
-              {
-                letter.money ? (<Typography variant='body2'>+${letter.money}</Typography>)
-                : null
-              }
-              <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 8 }}>{letter.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][letter.rarity] : 'Common'}</Typography>
+      <Box sx={{ opacity: disabled ? 0.6 : 1, position: 'absolute', top: 0, left: 0, boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', touchAction: 'none', borderRadius: '4px', fontSize: '24px', ...style, backgroundColor: fixedTiles?.includes(id) ? 'gainsboro' : style.backgroundColor, display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3, pt: letter.multiplier ? 0.5 : 0,  ...sx }}>
+        {
+          letter.multiplier ? (
+            <Box sx={{ position: 'absolute', top: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: letter.scope === 'word' ? '#b02bb5' : '#11adab', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+              x{letter.multiplier}
             </Box>
-          )}>
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>	
-              {displayedLetter}
+          ) : null
+        }
+        {
+          letter.rarity ? (
+            <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][letter.rarity], px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+              {['C', 'U', 'R', 'S'][letter.rarity]}
             </Box>
-          </Tooltip>
-        ) : (<span>
-          {displayedLetter}
-        </span>)
-      }
-      <Box sx={{ position: 'absolute', bottom: displayedLetter.length > 2 ? -1 : 1, right: 4, fontSize: '10px', fontFamily: 'Orbitron' }}>
-        {letter.value}
+          ) : null
+        }
+        {
+          letter.money ? (
+            <Box sx={{ position: 'absolute', bottom: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: '#a17e02', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+              ${letter.money}
+            </Box>
+          ) : null
+        }
+        {
+          letter.multiplier || letter.rarity || letter.money || bagTile ? (
+            <Tooltip arrow placement="top" title={(
+              <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Typography variant='h6' sx={{ fontFamily: 'Orbitron'}}>{letter.letter}</Typography>
+                {
+                  letter.multiplier ? (<Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} ${letter.value !== 1 ? 'points' : 'point'}` : `${letter.multiplier} x word score`}</Typography>)
+                  : (<Typography variant='body2'>{letter.value} {letter.value !== 1 ? 'points' : 'point'}</Typography>)
+                }
+                {
+                  letter.money ? (<Typography variant='body2'>+${letter.money}</Typography>)
+                  : null
+                }
+                <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 8 }}>{letter.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][letter.rarity] : 'Common'}</Typography>
+              </Box>
+            )}>
+              <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>	
+                {displayedLetter}
+              </Box>
+            </Tooltip>
+          ) : (<span>
+            {displayedLetter}
+          </span>)
+        }
+        <Box sx={{ position: 'absolute', bottom: displayedLetter.length > 2 ? -1 : 1, right: 4, fontSize: '10px', fontFamily: 'Orbitron' }}>
+          {letter.value}
+        </Box>
+        <Tooltip arrow open={!!scoringTileTop} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileTop?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
+          {scoringTileTop?.score >= 0 ? '+' : ''} {scoringTileTop?.score ?? ''}
+          {
+            scoringTileTop?.newMoney !== 0 ? <span style={{ color: scoringTileTop?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileTop?.newMoney > 0 ? ` +$${scoringTileTop?.newMoney}` : ` -$${Math.abs(scoringTileTop?.newMoney)}`}</span> : null
+          }
+          </span>} placement="top">
+          <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
+        </Tooltip>
+        <Tooltip arrow open={!!scoringTileLeft} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileLeft?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
+          {scoringTileLeft?.score >= 0 ? '+' : ''} {scoringTileLeft?.score ?? ''}
+          {
+            scoringTileLeft?.newMoney !== 0 ? <span style={{ color: scoringTileLeft?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileLeft?.newMoney > 0 ? ` +$${scoringTileLeft?.newMoney}` : ` -$${Math.abs(scoringTileLeft?.newMoney ?? 0)}`}</span> : null
+          }
+          </span>} placement="left">
+          <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
+        </Tooltip>
+        <Box ref={setNodeRefDropLeft} {...dropLeftList} {...dropRightAttr} sx={{ height: '100%', width: '45%', position: 'absolute', left: 0 }} />
+        <Box sx={{ height:'100%', width: '45%', position: 'absolute', right: 0 }} ref={setNodeRefDropRight} {...dropRightList} {...dropLeftAttr} />
       </Box>
-      <Tooltip arrow open={!!scoringTileTop} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileTop?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
-        {scoringTileTop?.score >= 0 ? '+' : ''} {scoringTileTop?.score ?? ''}
-        {
-          scoringTileTop?.newMoney !== 0 ? <span style={{ color: scoringTileTop?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileTop?.newMoney > 0 ? ` +$${scoringTileTop?.newMoney}` : ` -$${Math.abs(scoringTileTop?.newMoney)}`}</span> : null
-        }
-        </span>} placement="top">
-        <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
-      </Tooltip>
-      <Tooltip arrow open={!!scoringTileLeft} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileLeft?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
-        {scoringTileLeft?.score >= 0 ? '+' : ''} {scoringTileLeft?.score ?? ''}
-        {
-          scoringTileLeft?.newMoney !== 0 ? <span style={{ color: scoringTileLeft?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileLeft?.newMoney > 0 ? ` +$${scoringTileLeft?.newMoney}` : ` -$${Math.abs(scoringTileLeft?.newMoney ?? 0)}`}</span> : null
-        }
-        </span>} placement="left">
-        <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
-      </Tooltip>
     </Box>
   );
 };
