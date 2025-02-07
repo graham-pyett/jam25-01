@@ -44,6 +44,12 @@ const UserProvider = ({ children }) => {
     }
   }, [didTour, user]);
 
+  useEffect(() => {
+    if (didShopTour !== user?.didShopTour) {
+      setUser({ ...user, didShopTour });
+    }
+  }, [didShopTour, user]);
+
   const value = useMemo(() => {
     return {
       user,

@@ -16,7 +16,7 @@ const Bonus = ({ bonus }) => {
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 10 }}>{bon.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][bon.rarity] : 'Common'}</Typography>
         </Box>
       )}>
-        <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['#8f8a6f', '#7abf1f', '#34249c', '#b0102b'][bon.rarity], px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+        <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['#8f8a6f', '#7abf1f', '#34249c', '#b0102b'][bon.rarity], px: '3px', borderRadius: '2px 4px 2px 2px' }}>
           {['C', 'U', 'R', 'S'][bon.rarity]}
         </Box>
         {bon.text}

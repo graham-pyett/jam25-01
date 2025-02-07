@@ -66,7 +66,7 @@ const calcTarget = (round) => {
 const App = () => {
   const { user, setDidTour, setDidShopTour } = useUser();
   const  matches = useMediaQuery('(max-width: 900px)');
-  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, setBagTiles, setRoundOver: setGlobalRoundOver, setTurnOver, setRetrieving, setSwapTiles } = useGameData();
+  const { blanks, setBlanks, setFixedTiles, fixedTiles, setScoringTiles, setDealing, dealing, setBagTiles, setRoundOver: setGlobalRoundOver, setTurnOver, turnOver, setRetrieving, setSwapTiles, shopOpen, setShopOpen, activeJoker, setActiveJoker } = useGameData();
   const tilesToDrawRef = useRef(13);
   const [gridSizeY, setGridSizeY] = useState(7);
   const [gridSizeX, setGridSizeX] = useState(7);
@@ -98,7 +98,6 @@ const App = () => {
   const [round, setRound] = useState(0);
   const [roundOver, setRoundOver] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
   const [placementOpen, setPlacementOpen] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState([]);
   const [availableUpgradeTiles, setAvailableUpgradeTiles] = useState([]);
@@ -106,7 +105,7 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
-  const [jokers, setJokers] = useState([]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
+  const [jokers, setJokers] = useState([<Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
   const [maxJokers, setMaxJokers] = useState(5);
   const [bagOpen, setBagOpenRaw] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -441,9 +440,58 @@ const App = () => {
     setTrayArray(newTray.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
   }, [activeTile, setBlanks, trayArray]);
 
+  const handleDragJokerStart = useCallback((event) => {
+    const newActiveJoker = jokers.find((t) => t.props.id === event.active.id);
+    setActiveJoker(newActiveJoker);
+    setJokers((old) => {
+      const oldIndex = old.findIndex((t) => t.props.id === event.active.id);
+      const filtered = old.filter((t) => t.props.id !== event.active.id);
+      const blankId = `blank_space_${v4()}`;
+      filtered.splice(oldIndex, 0, <Blank key={blankId} id={blankId} />);
+      return filtered;
+    });
+  }, [jokers, setActiveJoker]);
+
+  const handleDragJokerMove = useCallback((event) => {
+    if (activeJoker) {
+      if (event.over?.id && !event.over.id.startsWith('blank_space') && jokers.map((t) => [`${t.props.id}-left`, `${t.props.id}-right`]).flat().includes(event.over.id)) {
+        setJokers((old) => {
+          const filtered = old.filter((t) => !t.props.id.startsWith('blank_space'));
+          if (event.over.id.endsWith('-left')) {
+            filtered.splice(filtered.findIndex((t) => `${t.props.id}-left` === event.over.id) + 1, 0, <Blank key={`blank_space_${v4()}`} id={`blank_space_${v4()}`} />);
+          } else {
+            filtered.splice(filtered.findIndex((t) => `${t.props.id}-right` === event.over.id), 0, <Blank key={`blank_space_${v4()}`} id={`blank_space_${v4()}`} />);
+          }
+          return filtered;
+        });
+      } else if (!event.over?.id?.startsWith('blank_space')) {
+        setJokers((old) => old.filter((t) => !t.props.id.startsWith('blank_space')));
+      }
+    }
+  }, [activeJoker, jokers]);
+
+  const handleDragJokerEnd = useCallback((event) => {
+    let newJokers = [...jokers];
+    if (activeJoker) {
+      if (event.over?.id && (event.over.id.startsWith('blank_space') || event.over.id.endsWith('-left') || event.over.id.endsWith('-right'))) {
+        const blankInd = newJokers.findIndex((t) => t.props.id.startsWith('blank_space'));
+        newJokers.splice(blankInd >= 0 ? blankInd : newJokers.length, 1, activeJoker);
+        newJokers = newJokers.filter((t) => !t.props.id.startsWith('blank_space'));
+      } else if (event.over?.id && event.collisions.map((c) => c.id).includes('garbage')) {
+        newJokers = [...newJokers.filter((t) => !t.props.id.startsWith('blank_space'))];
+        setFunds((old) => old + Math.floor(activeJoker.props.joker.price / 2));
+      } else {
+        newJokers = [...newJokers.filter((t) => !t.props.id.startsWith('blank_space')), activeJoker];
+      }
+    }
+    const uniqueTray = [...new Set(newJokers.map((t) => t.props.id))];
+    setJokers(newJokers.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
+    setActiveJoker(null);
+  }, [activeJoker, jokers, setActiveJoker]);
+
   const submitDisabled = useMemo(() => {
-    return !gridArray.flat().some((t) => t.tile && !fixedTiles.includes(t.tile.props.id));
-  }, [fixedTiles, gridArray]);
+    return dealing || turnOver || !gridArray.flat().some((t) => t.tile && !fixedTiles.includes(t.tile.props.id));
+  }, [dealing, fixedTiles, gridArray, turnOver]);
 
   
   const handleDragInventoryStart = useCallback((event) => {
@@ -599,7 +647,7 @@ const App = () => {
     setAvailableJokers(newAvailableJokers);
     setRoundOver(false);
     setShopOpen(true);
-  }, [getNewFunds]);
+  }, [getNewFunds, setShopOpen]);
   
   const handleNextRound = useCallback(() => {
     setPlacementOpen(false);
@@ -646,7 +694,7 @@ const App = () => {
     } else {
       handleNextRound();
     }
-  }, [gridSizeY, gridSizeX, handleNextRound, inventory.length]);
+  }, [setShopOpen, inventory.length, gridSizeY, gridSizeX, handleNextRound]);
 
   const handleGameOver = useCallback(() => {
     const newGridSize = 7;
@@ -853,6 +901,22 @@ const App = () => {
           <Box className="inventory" sx={{ minHeight: 50, mb: 2, p: 1, backgroundColor: 'gainsboro', border: '1px solid lightgrey', borderRadius: '8px' }}>
             {inventoryItems}
           </Box>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Jokers</Typography>
+          <DndContext onDragStart={handleDragJokerStart} onDragEnd={handleDragJokerEnd} onDragMove={handleDragJokerMove}>
+            <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: 'gainsboro', borderRadius: '8px' }}>
+              {
+                Array(maxJokers).fill().map((_, i) => (
+                  <JokerSpace key={i} id={v4()} joker={jokers[i] ?? null} />
+                ))
+              }
+              <Box sx={{ ml: 1 }}>
+                <JokerSpace isGarbage id={v4()} joker={null} />
+              </Box>
+            </Box>
+            <DragOverlay>
+              {activeJoker}
+            </DragOverlay>
+          </DndContext>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Jokers</Typography>
           <Box className="jokers" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
@@ -1030,7 +1094,7 @@ const App = () => {
             isOpen
             onRequestClose={() => setDidShopTour(true)}
             accentColor="#ff4da6"
-            lastStepNextButton={<Button className="button" variant="contained" onClick={() => setDidTour(true)}>Let's Shop!</Button>}	
+            lastStepNextButton={<Button className="button" variant="contained" onClick={() => setDidShopTour(true)}>Let's Shop!</Button>}	
           />
         )
       }

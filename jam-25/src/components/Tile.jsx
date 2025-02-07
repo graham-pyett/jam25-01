@@ -164,14 +164,14 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
         }
         {
           letter.rarity ? (
-            <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][letter.rarity], px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+            <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][letter.rarity], px: '3px', borderRadius: '2px 4px 2px 2px' }}>
               {['C', 'U', 'R', 'S'][letter.rarity]}
             </Box>
           ) : null
         }
         {
           letter.money ? (
-            <Box sx={{ position: 'absolute', bottom: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: '#a17e02', px: '3px', borderRadius: '4px 2px 2px 2px' }}>
+            <Box sx={{ position: 'absolute', bottom: 0, left: 0, fontSize: '10px', color: 'white', backgroundColor: '#a17e02', px: '3px', borderRadius: '2px 2px 2px 4px' }}>
               ${letter.money}
             </Box>
           ) : null
@@ -195,6 +195,8 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
               <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>	
                 {displayedLetter}
               </Box>
+              <Box ref={setNodeRefDropLeft} {...dropLeftList} {...dropRightAttr} sx={{ height: '100%', width: '45%', position: 'absolute', left: 0 }} />
+              <Box sx={{ height:'100%', width: '45%', position: 'absolute', right: 0 }} ref={setNodeRefDropRight} {...dropRightList} {...dropLeftAttr} />
             </Tooltip>
           ) : (<span>
             {displayedLetter}
@@ -206,7 +208,7 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
         <Tooltip arrow open={!!scoringTileTop} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileTop?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
           {scoringTileTop?.score >= 0 ? '+' : ''} {scoringTileTop?.score ?? ''}
           {
-            scoringTileTop?.newMoney !== 0 ? <span style={{ color: scoringTileTop?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileTop?.newMoney > 0 ? ` +$${scoringTileTop?.newMoney}` : ` -$${Math.abs(scoringTileTop?.newMoney)}`}</span> : null
+            scoringTileLeft?.newMoney != null && scoringTileTop?.newMoney !== 0 ? <span style={{ color: scoringTileTop?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileTop?.newMoney > 0 ? ` +$${scoringTileTop?.newMoney}` : ` -$${Math.abs(scoringTileTop?.newMoney)}`}</span> : null
           }
           </span>} placement="top">
           <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
@@ -214,13 +216,11 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
         <Tooltip arrow open={!!scoringTileLeft} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileLeft?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
           {scoringTileLeft?.score >= 0 ? '+' : ''} {scoringTileLeft?.score ?? ''}
           {
-            scoringTileLeft?.newMoney !== 0 ? <span style={{ color: scoringTileLeft?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileLeft?.newMoney > 0 ? ` +$${scoringTileLeft?.newMoney}` : ` -$${Math.abs(scoringTileLeft?.newMoney ?? 0)}`}</span> : null
+            scoringTileLeft?.newMoney != null && scoringTileLeft?.newMoney !== 0 ? <span style={{ color: scoringTileLeft?.newMoney < 0 ? '#ff9ca7' : 'gold' }}>{scoringTileLeft?.newMoney > 0 ? ` +$${scoringTileLeft?.newMoney}` : ` -$${Math.abs(scoringTileLeft?.newMoney ?? 0)}`}</span> : null
           }
           </span>} placement="left">
           <Box sx={{ width: '100%', height: '100%', pointerEvents: 'none', position: 'absolute' }} />
         </Tooltip>
-        <Box ref={setNodeRefDropLeft} {...dropLeftList} {...dropRightAttr} sx={{ height: '100%', width: '45%', position: 'absolute', left: 0 }} />
-        <Box sx={{ height:'100%', width: '45%', position: 'absolute', right: 0 }} ref={setNodeRefDropRight} {...dropRightList} {...dropLeftAttr} />
       </Box>
     </Box>
   );

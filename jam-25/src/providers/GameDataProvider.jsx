@@ -14,6 +14,8 @@ const GameDataProvider = ({ children }) => {
   const turnOffDealing = useRef(null);
   const [roundOver, setRoundOver] = useState(false);
   const [turnOver, setTurnOver] = useState(true);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [activeJoker, setActiveJoker] = useState(null);
 
   useEffect(() => {
     if (dealing) {
@@ -77,8 +79,10 @@ const GameDataProvider = ({ children }) => {
       turnOver, setTurnOver,
       retrieving, setRetrieving,
       swapTiles, setSwapTiles,
+      shopOpen, setShopOpen,
+      activeJoker, setActiveJoker,
     };
-  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles]);
+  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, shopOpen, activeJoker]);
 
   return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
 };
