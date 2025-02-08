@@ -16,6 +16,7 @@ const Joker = ({ sx, joker, id }) => {
 
   return (
     <Box
+      className={shopOpen ? 'joker-hover' : ''}
       id={id}
       ref={setNodeRef}
       {...attributes}
@@ -33,9 +34,9 @@ const Joker = ({ sx, joker, id }) => {
         <Box ref={setNodeRefDropLeft} {...dropLeftList} {...dropRightAttr} sx={{ height: '100%', width: '45%', position: 'absolute', left: 0 }} />
         <Box sx={{ height:'100%', width: '45%', position: 'absolute', right: 0 }} ref={setNodeRefDropRight} {...dropRightList} {...dropLeftAttr} />
       </Tooltip>
-      <Tooltip arrow open={!!(scoringTile.score || scoringTile.newMoney || scoringTile.text)} title={(
+      <Tooltip arrow open={!!(scoringTile.score || scoringTile.newMoney || scoringTile.text || scoringTile.newMoney === 0)} title={(
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {scoringTile.score !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTile.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
+          {(scoringTile.score !== 0 || scoringTile.newMoney === 0) && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTile.score < 0 ? '#ff9ca7' : '#b3faaa'}}>
             {scoringTile.score >= 0 ? '+' : ''} {scoringTile.score ?? ''}
           </span>)}
           {scoringTile.newMoney !== 0 && (<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#fffb80'}}>

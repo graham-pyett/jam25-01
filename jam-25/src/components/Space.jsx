@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import Bonus from "./Bonus";
 
-const Space = ({ tile, id, bonus }) => {
+const Space = ({ tile, id, bonus, inventory }) => {
   const { isOver, setNodeRef } = useDroppable({
     id,
     disabled: !!tile,
@@ -22,7 +22,7 @@ const Space = ({ tile, id, bonus }) => {
   return (
     <Box sx={{ width: '50px', height: '50px', border: '1px solid rgba(32, 53, 212, 0.4)', backgroundColor: color, position: 'relative' }} ref={setNodeRef}>
       {
-        bonus && <Bonus bonus={bonus} />
+        bonus && <Bonus bonus={bonus} placed={inventory ? id : null} />
       }
       {tile}
     </Box>

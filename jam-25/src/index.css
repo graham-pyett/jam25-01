@@ -97,3 +97,7 @@ code {
 .general-tile-wide {
   width: 44px!important;
 }
+
+.joker-hover:hover {
+  cursor: pointer;
+}

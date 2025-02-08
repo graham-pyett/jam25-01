@@ -25,6 +25,7 @@ import JokerSpace from "../components/JokerSpace";
 import { useUser } from "../providers/UserProvider";
 import Bag from "../components/Bag";
 import Blank from "../components/Blank";
+import Bomb from "../components/Bomb";
 
 const calcTarget = (round) => {
   return Math.round(
@@ -105,10 +106,12 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
-  const [jokers, setJokers] = useState([<Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
+  const [jokers, setJokers] = useState([]); //<Joker joker={JOKERS[16]} id={JOKERS[16].id} /> <Joker joker={JOKERS[15]} id={JOKERS[15].id} /><Joker joker={JOKERS[4]} id={JOKERS[4].id} />,<Joker joker={JOKERS[7]} id={JOKERS[7].id} />
   const [maxJokers, setMaxJokers] = useState(5);
   const [bagOpen, setBagOpenRaw] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
+  const [jokerDelete, setJokerDelete] = useState(false);
+  const [bonusDelete, setBonusDelete] = useState(null);
 
   const setBagOpen = useCallback((open) => {
     if (!open) {
@@ -139,7 +142,10 @@ const App = () => {
       const tile = gridArray[row][col]?.tile?.props;
       if (tile && word.tiles.find((t) => t.props.id === tile?.id)) {
         baseScore += b.adder;
-        baseScore += tile.letter.value * (b.multiplier === 0 ? 1 : b.multiplier);
+        if (b.multiplier) {
+          baseScore -= tile.letter.value;
+          baseScore += tile.letter.value * b.multiplier;
+        }
       }
     });
     bonuses.filter((b) => b.scope === 'word').forEach((b) => {
@@ -156,7 +162,7 @@ const App = () => {
       setTimeout(() => {
         setScoringTiles((old) => old.filter((t) => t.id !== word.tiles[0]?.props?.id || t.placement !== (word.orientation === 'horizontal' ? 'left' : 'top') || t.scoreRound !== scoreRound));
       }, 1000);
-      await new Promise((resolve) => setTimeout(() => { setTurnScore((old) => (old ?? 0) + (word?.valid ? baseScore : -baseScore)); resolve(); }, Math.max(500 - (scoreRound * 200), 100)));
+      await new Promise((res) => setTimeout(() => { setTurnScore((old) => (old ?? 0) + (word?.valid ? baseScore : -baseScore)); res(); }, Math.max(500 - (scoreRound * 200), 100)));
       resolve(baseScore);
     }, Math.max(500 - (scoreRound * 200), 200)));
   }, [gridArray, setScoringTiles]);
@@ -171,20 +177,19 @@ const App = () => {
     const validScore = await newWords.filter((w) => w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     const invalidScore = await newWords.filter((w) => !w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     let currentScore = validScore - invalidScore;
-    await Promise.all(jokers.filter((j) => j.props?.joker?.action).map(async (j) => {
+    for (let j of jokers.filter((j) => j.props?.joker?.action)) {
       const { newScore, newMoney, delta } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore, target, funds }) ?? { newScore: currentScore, newMoney: 0, delta: 0 };
-      await new Promise((resolve) => setTimeout(() => {
+      currentScore = await new Promise((resolve) => setTimeout(async () => {
           setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0, scoreRound }]);
-          setTurnScore((old) => (old ?? 0) + delta);
           setFunds((old) => old + (newMoney ?? 0));
           setTimeout(() => {
             setScoringTiles((old) => old.filter((t) => t.id !== j.props?.id || t.scoreRound !== scoreRound));
           }, 1000);
-          currentScore = newScore;
-          resolve();
+          await new Promise((res) => setTimeout(() => { setTurnScore((old) => (old ?? 0) + delta); res(); }, Math.max(500 - (scoreRound * 200), 100)));
+          resolve(newScore);
         }, Math.max(500 - (scoreRound * 200), 200))
       );
-    }));
+    }
     turnScores.current[currentTurnRef.current] = currentScore;
     return currentScore;
   }, [funds, gridArray, jokers, scoreWord, setScoringTiles, target, words]);
@@ -477,16 +482,18 @@ const App = () => {
         const blankInd = newJokers.findIndex((t) => t.props.id.startsWith('blank_space'));
         newJokers.splice(blankInd >= 0 ? blankInd : newJokers.length, 1, activeJoker);
         newJokers = newJokers.filter((t) => !t.props.id.startsWith('blank_space'));
+        setActiveJoker(null);
+        const uniqueTray = [...new Set(newJokers.map((t) => t.props.id))];
+        setJokers(newJokers.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
       } else if (event.over?.id && event.collisions.map((c) => c.id).includes('garbage')) {
-        newJokers = [...newJokers.filter((t) => !t.props.id.startsWith('blank_space'))];
-        setFunds((old) => old + Math.floor(activeJoker.props.joker.price / 2));
+        setJokerDelete(true);
       } else {
         newJokers = [...newJokers.filter((t) => !t.props.id.startsWith('blank_space')), activeJoker];
+        const uniqueTray = [...new Set(newJokers.map((t) => t.props.id))];
+        setJokers(newJokers.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
+        setActiveJoker(null);
       }
     }
-    const uniqueTray = [...new Set(newJokers.map((t) => t.props.id))];
-    setJokers(newJokers.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
-    setActiveJoker(null);
   }, [activeJoker, jokers, setActiveJoker]);
 
   const submitDisabled = useMemo(() => {
@@ -495,16 +502,19 @@ const App = () => {
 
   
   const handleDragInventoryStart = useCallback((event) => {
-    const newActiveInventory = inventory.find((t) => t.props.item.id === event.active.id);
-    setActiveInventory(newActiveInventory);
-    setInventoryItems((old) => [...old.filter((t) => t.props.item.id !== event.active.id)]);
-    setInventoryGridArray((old) => old.map((r) => r.map((c) => {
-      if (c.tile === newActiveInventory) {
-        return { ...c, tile: null };
-      }
-      return c;
-    })));
-
+    if (event.active.id === 'bomb') {
+      setActiveInventory(<Bomb />);
+    } else {
+      const newActiveInventory = inventory.find((t) => t.props.item.id === event.active.id);
+      setActiveInventory(newActiveInventory);
+      setInventoryItems((old) => [...old.filter((t) => t.props.item.id !== event.active.id)]);
+      setInventoryGridArray((old) => old.map((r) => r.map((c) => {
+        if (c.tile === newActiveInventory) {
+          return { ...c, tile: null };
+        }
+        return c;
+      })));
+    }
   }, [inventory]);
 
   const handleUpgrade = useCallback((tile, upgrade) => {
@@ -519,7 +529,15 @@ const App = () => {
   }, []);
 
   const handleDragInventoryEnd = useCallback((event) => {
-    if (event.over?.id != null && event.over.id >=0 && event.over.id < 7 && activeInventory.props.item.placement === 'tile') {
+    if (event.active.id === 'bomb') {
+      if (event?.over?.id != null) {
+        const found = event.collisions.map((c) => c.data?.droppableContainer?.data?.current).find((a) => a.accepts.includes('bomb'));
+        if (found) {
+          const bon = { ...BONUSES[found?.bonus], location: found?.placed };
+          setBonusDelete(bon);
+        }
+      }
+    } else if (event.over?.id != null && event.over.id >=0 && event.over.id < 7 && activeInventory.props.item.placement === 'tile') {
       setPossibleLetters((old) => old.map((l, i) => {
         if (i === parseInt(event.over.id)) {
           const newTile = handleUpgrade(l.props.letter, activeInventory.props.item);
@@ -869,6 +887,66 @@ const App = () => {
 
   return (
     <>
+      <Dialog open={jokerDelete}>
+        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Sell Joker?</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2, maxWidth: '30%' }}>
+              {activeJoker}
+              <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20, fontFamily: 'Orbitron' }}>{activeJoker?.props?.joker?.name}</Typography>
+              <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{activeJoker?.props?.joker?.description}</Typography>
+              <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', fontFamily: 'Orbitron' }}>Refund: ${Math.floor(activeJoker?.props?.joker?.price / 2)}</Typography>
+            </Box>
+          <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
+          <Button className="button" variant="contained" sx={{ mr: 0.5 }} onClick={() => {
+            const newJokers = [...jokers.filter((t) => !t.props.id.startsWith('blank_space')), activeJoker];
+            setJokers(newJokers);
+            setJokerDelete(false);
+            setActiveJoker(null);
+          }}>
+                Cancel
+            </Button>
+            <Button className="button" variant="contained" sx={{ ml: 0.5 }} onClick={() => {
+              setFunds((old) => old + Math.floor(activeJoker.props.joker.price / 2));
+              setJokerDelete(false);
+              setActiveJoker(null);
+            }}>
+                Sell
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={bonusDelete}>
+        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Remove Bonus?</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Box sx={{ display: 'flex', width: '80%', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', m: 1, p: 2, ...bonusDelete?.style }}>
+            <Typography variant='h6' sx={{ fontFamily: 'Orbitron' }}>{bonusDelete?.name}</Typography>
+            <Typography variant='body1' sx={{ textAlign: 'center' }}>{bonusDelete?.description}</Typography>
+            <Typography variant='body1' sx={{ color: 'goldenrod', fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center', width: bonusDelete?.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Refund: ${Math.floor(bonusDelete?.price / 2)}</Typography>
+          </Box>
+          <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
+            <Button className="button" variant="contained" sx={{ mr: 0.5 }} onClick={() => {
+              setBonusDelete(null);
+            }}>
+                Cancel
+            </Button>
+            <Button className="button" variant="contained" sx={{ ml: 0.5 }} onClick={() => {
+              setFunds((old) => old + Math.floor(bonusDelete.price / 2));
+              const row = parseInt(bonusDelete.location.split(',')[0]);
+              const col = parseInt(bonusDelete.location.split(',')[1]);
+              setInventoryGridArray((old) => old.map((r, i) => r.map((c, j) => {
+                if (i === row && j === col) {
+                  return {...c, bonus: null };
+                }
+                return c;
+              })));
+              bonusSpacesRef.current = bonusSpacesRef.current.filter((bs) => bs.id !== bonusDelete.location);
+              setBonusDelete(null);
+            }}>
+                Sell
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
       <Dialog open={roundOver}>
         <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Round Over</DialogTitle>
         <DialogContent>
@@ -1006,18 +1084,21 @@ const App = () => {
               <DragOverlay>
                 {activeInventory}
               </DragOverlay>
-              <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', mb: matches ? 0 : 2, flexWrap: 'wrap' }}>
                 {
                   possibleLetters.map((l, i) => (
                     <InventoryTile tile={l} id={i} />
                   ))
                 }
               </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', scale: matches ? 0.75 : 1 }}>
+              <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', scale: matches ? 0.5 : 1, mt: matches ? -12 : 0 }}>
+                <Box sx={{ position: 'absolute', top: 0, right: 0, width: 50, height: 50, borderRadius: 2, border: '1px solid slategrey', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, backgroungColor: 'whitesmoke' }}>
+                  <Bomb />
+                </Box>
                 <Edge side="top" />
                 <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                   <Edge side="left" />
-                  <Grid gridArray={inventoryGridArray} />
+                  <Grid gridArray={inventoryGridArray} inventory />
                   <Edge side="right" />
                 </Box>
                 <Edge side="bottom" />
