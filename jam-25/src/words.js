@@ -36541,6 +36541,8 @@ export const allWords = [
 "corncrakes",
 "corncrib",
 "corncribs",
+"corndog",
+"corndogs",
 "cornea",
 "corneae",
 "corneal",
