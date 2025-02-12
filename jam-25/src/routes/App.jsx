@@ -291,7 +291,7 @@ const App = () => {
     });
 
     return newFoundWords;
-  }, [blanks, fixedTiles, gridArray]);
+  }, [blanks, fixedTiles, gridArray, gridSizeX]);
 
   const endTurn = useCallback(async () => {
     setTurnOver(true);
