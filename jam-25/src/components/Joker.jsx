@@ -24,10 +24,14 @@ const Joker = ({ sx, joker, id }) => {
       key={id}
       sx={{ boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px',  display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, ...joker.style }}
     >
+      <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][joker.rarity], px: '3px', borderRadius: '2px 4px 2px 2px' }}>
+        {['C', 'U', 'R', 'S'][joker.rarity]}
+      </Box>
       <Tooltip arrow placement="bottom" title={activeJoker?.props?.id !== id ? (
         <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>{joker.name}</Typography>
           <Typography variant='body2' sx={{ textAlign: 'center' }}>{joker.description}</Typography>
+          <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 8 }}>{['Common', 'Uncommon', 'Rare', 'Shiny'][joker.rarity]}</Typography>
         </Box>
         ): null}>
         {joker.text}

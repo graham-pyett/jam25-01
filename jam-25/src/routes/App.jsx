@@ -255,7 +255,7 @@ const App = () => {
       });
     });
     // check columns
-    for (let i = 0; i < gridArray.length; i++) {
+    for (let i = 0; i < gridSizeX; i++) {
       const col = gridArray.map((row) => row[i]);
       const startTiles = col.filter((t, i) => t.tile != null && (i === 0 || !col[i - 1].tile));
       startTiles.forEach((t) => {
@@ -1032,8 +1032,8 @@ const App = () => {
                   <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || availableFunds < u.price} onClick={() => {
                     if (availableFunds >= u.price) {
                       setFunds((old) => old - u.price);
-                      setInventory((old) => [...old, <InventoryItem item={u} />]);
-                      setInventoryItems((old) => [...old, <InventoryItem item={u} />]);
+                      setInventory((old) => [...old, <InventoryItem key={u.id} item={u} />]);
+                      setInventoryItems((old) => [...old, <InventoryItem key={u.id} item={u} />]);
                       setAvailableUpgrades((old) => old.map((a) => ({ ...a, disabled: a.id === u.id })));
                     }
                   }}>Buy</Button>
@@ -1087,7 +1087,7 @@ const App = () => {
               <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', mb: matches ? 0 : 2, flexWrap: 'wrap' }}>
                 {
                   possibleLetters.map((l, i) => (
-                    <InventoryTile tile={l} id={i} />
+                    <InventoryTile key={i} tile={l} id={i} />
                   ))
                 }
               </Box>

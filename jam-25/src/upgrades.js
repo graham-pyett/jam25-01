@@ -182,7 +182,7 @@ export const JOKERS = [
     id: v4(),
     text: '🧠',
     name: 'Brainiac',
-    description: '+3 multiplier for every valid word, but +5 multiplier for every invalid word',
+    description: '+2 multiplier for every valid word, but +5 multiplier for every invalid word',
     action: ({
       words,
       grid,
@@ -190,7 +190,7 @@ export const JOKERS = [
       validScore,
       invalidScore
     }) => {
-      const newValid = validScore * 2;
+      const newValid = validScore;
       const newInvalid = invalidScore * 4;
       return {
         newScore: totalScore + (newValid - newInvalid),
