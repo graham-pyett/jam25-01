@@ -101,3 +101,7 @@ code {
 .joker-hover:hover {
   cursor: pointer;
 }
+
+.draggable {
+  touch-action: none;
+}

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { DndContext, DragOverlay, useSensor, PointerSensor, useSensors } from "@dnd-kit/core";
 import Tour from 'reactour'
 import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
 import ShareIcon from '@mui/icons-material/Share';
@@ -779,6 +779,15 @@ const App = () => {
     }
   }, [allTiles, choosy, doSwap, setBagOpen, setSwapTiles, swapArray, swaps])
 
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: {
+      delay: 250,
+      tolerance: 500
+    }
+  });
+
+  const sensors = useSensors(pointerSensor);
+
   const steps = useMemo(() => [
     {
       selector: '.tray',
@@ -980,7 +989,7 @@ const App = () => {
             {inventoryItems}
           </Box>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Jokers</Typography>
-          <DndContext onDragStart={handleDragJokerStart} onDragEnd={handleDragJokerEnd} onDragMove={handleDragJokerMove}>
+          <DndContext sensors={sensors} onDragStart={handleDragJokerStart} onDragEnd={handleDragJokerEnd} onDragMove={handleDragJokerMove}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: 'gainsboro', borderRadius: '8px' }}>
               {
                 Array(maxJokers).fill().map((_, i) => (
@@ -1079,7 +1088,7 @@ const App = () => {
         <DialogContent sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
           <Typography variant='body1' sx={{ fontFamily: 'Orbitron' }}>Drag upgrades to the board or tiles to improve them.</Typography>
-          <DndContext onDragStart={handleDragInventoryStart} onDragEnd={handleDragInventoryEnd}>
+          <DndContext sensors={sensors} onDragStart={handleDragInventoryStart} onDragEnd={handleDragInventoryEnd}>
               <Inventory items={inventoryItems} />
               <DragOverlay>
                 {activeInventory}
@@ -1122,7 +1131,7 @@ const App = () => {
           </Box>
         </DialogContent>
       </Dialog>
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragMove={handleDragMove}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragMove={handleDragMove}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '300px' : undefined }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           {
