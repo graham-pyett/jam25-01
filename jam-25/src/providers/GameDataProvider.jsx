@@ -110,9 +110,9 @@ const GameDataProvider = ({ children }) => {
   }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, jokers, maxJokers, gameStarted]);
 
   const savedGame = useCallback(() => {
-    const data = JSON.parse(localStorage.getItem('gameData'));
-    data.inventory = data.inventory.map((i) => <InventoryItem key={i.id} item={i} />);
-    data.jokers = data.jokers.map((j) => <Joker joker={j} id={j.id} />);
+    const data = JSON.parse(localStorage.getItem('gameData')) ?? {};
+    data.inventory = data?.inventory?.map((i) => <InventoryItem key={i.id} item={i} />) ?? [];
+    data.jokers = data?.jokers?.map((j) => <Joker joker={j} id={j.id} />) ?? [];
     return data;
   }, []);
 
@@ -123,21 +123,21 @@ const GameDataProvider = ({ children }) => {
   const loadGame = useCallback(() => {
     const data = savedGame();
     if (data) {
-      setGridSizeY(data.gridSizeY);
-      setGridSizeX(data.gridSizeX);
-      setTileLibrary(data.tileLibrary);
-      setFunds(data.funds);
-      setTarget(data.target);
-      setBonusSpaces(data.bonusSpaces);
-      setRound(data.round);
-      setInventory(data.inventory);
-      setJokers(data.jokers);
-      setMaxJokers(data.maxJokers);
+      setGridSizeY(data.gridSizeY ?? 7);
+      setGridSizeX(data.gridSizeX ?? 7);
+      setTileLibrary(data.tileLibrary ?? getStarterLetters());
+      setFunds(data.funds ?? 3);
+      setTarget(data.target ?? calcTarget(0));
+      setBonusSpaces(data.bonusSpaces ?? [{ id: `${Math.floor((gridSizeY ?? 7) / 2)},${Math.floor((gridSizeX ?? 7) / 2)}`, bonus: 'BDW' }]);
+      setRound(data.round ?? 0);
+      setInventory(data.inventory ?? []);
+      setJokers(data.jokers ?? []);
+      setMaxJokers(data.maxJokers ?? 5);
       setTimeout(() => {
         setGameStarted(true);
       }, 500);
     }
-  }, [savedGame]);
+  }, [gridSizeX, gridSizeY, savedGame]);
 
   const value = useMemo(() => {
     return {
