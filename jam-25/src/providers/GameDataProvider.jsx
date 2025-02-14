@@ -1,6 +1,19 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { getStarterLetters } from "../letters";
+import InventoryItem from "../components/InventoryItem";
+import Joker from "../components/Joker";
 
 const GameDataContext = createContext(null);
+
+export const calcTarget = (round) => {
+  return Math.round(
+    (
+      Math.pow((round * 10), 1.85)
+      + 350
+    )
+    / 100
+  ) * 10;
+}
 
 const GameDataProvider = ({ children }) => {
   const [blanks, setBlanks] = useState({});
@@ -16,6 +29,17 @@ const GameDataProvider = ({ children }) => {
   const [turnOver, setTurnOver] = useState(true);
   const [shopOpen, setShopOpen] = useState(false);
   const [activeJoker, setActiveJoker] = useState(null);
+  const [gridSizeY, setGridSizeY] = useState(7);
+  const [gridSizeX, setGridSizeX] = useState(7);
+  const [tileLibrary, setTileLibrary] = useState(getStarterLetters());
+  const [funds, setFunds] = useState(3);
+  const [target, setTarget] = useState(calcTarget(0));
+  const [bonusSpaces, setBonusSpaces] = useState([{ id: `${Math.floor(gridSizeY / 2)},${Math.floor(gridSizeX / 2)}`, bonus: 'BDW' }]);
+  const [round, setRound] = useState(0);
+  const [inventory, setInventory] = useState([]);
+  const [jokers, setJokers] = useState([]); 
+  const [maxJokers, setMaxJokers] = useState(5);
+  const [gameStarted, setGameStarted] = useState(false);
 
   useEffect(() => {
     if (dealing) {
@@ -68,6 +92,53 @@ const GameDataProvider = ({ children }) => {
     }
   }, [swapTiles]);
 
+  useEffect(() => {
+    if (gameStarted) {
+      localStorage.setItem('gameData', JSON.stringify({
+        gridSizeY,
+        gridSizeX,
+        tileLibrary,
+        funds,
+        target,
+        bonusSpaces,
+        round,
+        inventory: inventory.map((i) => i.props.item),
+        jokers: jokers.map((j) => j.props.joker),
+        maxJokers,
+      }));
+    }
+  }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, jokers, maxJokers, gameStarted]);
+
+  const savedGame = useCallback(() => {
+    const data = JSON.parse(localStorage.getItem('gameData'));
+    data.inventory = data.inventory.map((i) => <InventoryItem key={i.id} item={i} />);
+    data.jokers = data.jokers.map((j) => <Joker joker={j} id={j.id} />);
+    return data;
+  }, []);
+
+  const clearGame = useCallback(() => {
+    localStorage.removeItem('gameData');
+  }, []);
+
+  const loadGame = useCallback(() => {
+    const data = savedGame();
+    if (data) {
+      setGridSizeY(data.gridSizeY);
+      setGridSizeX(data.gridSizeX);
+      setTileLibrary(data.tileLibrary);
+      setFunds(data.funds);
+      setTarget(data.target);
+      setBonusSpaces(data.bonusSpaces);
+      setRound(data.round);
+      setInventory(data.inventory);
+      setJokers(data.jokers);
+      setMaxJokers(data.maxJokers);
+      setTimeout(() => {
+        setGameStarted(true);
+      }, 500);
+    }
+  }, [savedGame]);
+
   const value = useMemo(() => {
     return {
       blanks, setBlanks,
@@ -81,8 +152,22 @@ const GameDataProvider = ({ children }) => {
       swapTiles, setSwapTiles,
       shopOpen, setShopOpen,
       activeJoker, setActiveJoker,
+      gridSizeY, setGridSizeY,
+      gridSizeX, setGridSizeX,
+      tileLibrary, setTileLibrary,
+      funds, setFunds,
+      target, setTarget,
+      bonusSpaces, setBonusSpaces,
+      round, setRound,
+      inventory, setInventory,
+      jokers, setJokers,
+      maxJokers, setMaxJokers,
+      gameStarted, setGameStarted,
+      loadGame,
+      savedGame,
+      clearGame,
     };
-  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, shopOpen, activeJoker]);
+  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, shopOpen, activeJoker, gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, jokers, maxJokers, gameStarted, loadGame, savedGame, clearGame]);
 
   return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
 };

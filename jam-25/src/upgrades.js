@@ -10,6 +10,7 @@ export const BONUSES = {
   TDW: { rarity: 2, price: 6, name: 'Double Word Tile', description: "Doubles the base score for words this letter is part of", text: '2xW', multiplier: 2, adder: 0, placement: 'tile', scope: 'word', style: { backgroundColor: 'rgba(217, 122, 63, 0.4)', border: '4px double rgb(217, 122, 63)' } },
   TTW: { rarity: 3, price: 7, name: 'Triple Word Tile', description: "Triples the base score for words this letter is part of", text: '3xW', multiplier: 3, adder: 0, placement: 'tile', scope: 'word', style: { backgroundColor: 'rgba(219, 209, 22, 0.4)', border: '4px double rgb(219, 209, 22)' } },
   EDGE: { rarity: 1, price: 10, name: 'Board Edge', description: 'Place this upgrade on the edge of the board give yourself more room to play', text: 'EDGE', placement: 'edge', style: { backgroundColor: 'rgba(102, 105, 112, 0.6)', border: '4px double rgb(102, 105, 112)' } },
+  JOKER: { rarity: 3, price: 15, name: 'Joker', description: 'Purchase this upgrade to permanently add a joker space', text: 'JOKER', placement: false, style: { backgroundColor: 'rgba(150, 30, 114, 0.6)', border: '4px double rgb(150, 30, 114)' } },
   TP1: { rarity: 0, price: 3, name: '+1 Base Score', description: 'Place this upgrade on a tile to increase its base score by one', text: '+1L', multiplier: 0, adder: 1, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(190, 71, 237, 0.4)', border: '4px double rgb(190, 71, 237)' }, threshhold: 4 },
   TP3: { rarity: 1, price: 5, name: '+3 Base Score', description: 'Place this upgrade on a tile to increase its base score by three', text: '+3L', multiplier: 0, adder: 3, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(16, 143, 227, 0.4)', border: '4px double rgb(16, 143, 227)' }, threshhold: 4 },
   TP5: { rarity: 2, price: 7, name: '+5 Base Score', description: 'Place this upgrade on a tile to increase its base score by five', text: '+5L', multiplier: 0, adder: 5, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(72, 99, 43, 0.4)', border: '4px double rgb(72, 99, 43)' }, threshhold: 4 },
@@ -74,7 +75,7 @@ export const JOKERS = [
     id: v4(),
     text: '❌',
     name: 'Crosser',
-    description: 'Adds +1 multiplier for every intersection',
+    description: 'Adds +1 multiplier for every intersection (max +5)',
     action: ({
       words,
       grid,
@@ -83,7 +84,7 @@ export const JOKERS = [
     }) => {
       const tileCounts = {};
       words.flat().filter((w) => w.valid).forEach((w) => w.tiles?.forEach((t) => tileCounts[t.props?.id] = tileCounts[t.props?.id] ? tileCounts[t.props?.id] += 1 : 1))
-      const newScore = (1 + (Object.keys(tileCounts).filter((k) => tileCounts[k] > 1).length)) * totalScore;
+      const newScore = (1 + Math.min((Object.keys(tileCounts).filter((k) => tileCounts[k] > 1).length), 5)) * totalScore;
       return {
         newScore,
         newMoney: 0,
@@ -434,6 +435,34 @@ export const JOKERS = [
     style: {
       border: '2px solid rgb(150, 123, 14)',
       backgroundColor: 'rgba(150, 123, 14, 0.4)'
+    }
+  },
+  {
+    rarity: 3,
+    price: 6,
+    id: v4(),
+    text: '🥡',
+    name: 'Leftovers',
+    description: 'Multiply the total score by the value of the lowest scoring tile left in your tray',
+    action: ({
+      words,
+      grid,
+      tray,
+      totalScore,
+      invalidScore
+    }) => {
+      const lowestScoreTile = tray.reduce((acc, t) => {
+        return t.props?.score < acc ? t.props.score : acc;
+      });
+      return {
+        newScore: totalScore * lowestScoreTile,
+        delta: totalScore * (lowestScoreTile - 1),
+        newMoney: 0
+      };
+    },
+    style: {
+      border: '2px solid rgb(191, 191, 189)',
+      backgroundColor: 'rgba(191, 191, 189, 0.4)'
     }
   },
 ];

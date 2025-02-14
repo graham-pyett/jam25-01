@@ -6,7 +6,7 @@ const Grid = ({ gridArray, inventory }) => {
   return (
     <Box sx={{ border: '2px solid slategrey', borderRadius: '4px' }}>
       {
-        gridArray.map((row, i) => (
+        gridArray?.map((row, i) => (
           <Box key={i} sx={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}>
             {
               row.map((space) => (

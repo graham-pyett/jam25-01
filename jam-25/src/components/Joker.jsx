@@ -26,7 +26,7 @@ const Joker = ({ sx, joker, id }) => {
       sx={{ boxSizing: 'border-box', m: '3px', width: '44px', height: '44px', borderRadius: '4px', fontSize: '24px',  display: 'flex', justifyContent: 'center', alignItems: 'center',  position: 'relative', zIndex: 3, ...joker.style }}
     >
       <ClickAwayListener onClickAway={() => setTtipOpen(false)}>
-        <Box sx={{ height: '100%', width: '100%' }} onClick={() => setTtipOpen(!ttipOpen)}>
+        <Box sx={{ height: '100%', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setTtipOpen(!ttipOpen)}>
         <Box sx={{ position: 'absolute', top: 0, right: 0, fontSize: '10px', color: 'white', backgroundColor: ['', '#7abf1f', '#34249c', '#b0102b'][joker.rarity], px: '3px', borderRadius: '2px 4px 2px 2px' }}>
           {['C', 'U', 'R', 'S'][joker.rarity]}
         </Box>
