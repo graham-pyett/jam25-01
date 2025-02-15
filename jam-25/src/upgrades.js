@@ -452,7 +452,7 @@ export const JOKERS = [
       invalidScore
     }) => {
       const lowestScoreTile = tray.reduce((acc, t) => {
-        return t.props?.score < acc ? t.props.score : acc;
+        return t.props?.letter?.value < acc ? t.props.letter.value : acc;
       });
       return {
         newScore: totalScore * lowestScoreTile,

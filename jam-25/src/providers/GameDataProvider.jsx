@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { getStarterLetters } from "../letters";
 import InventoryItem from "../components/InventoryItem";
 import Joker from "../components/Joker";
+import { JOKERS } from "../upgrades";
 
 const GameDataContext = createContext(null);
 
