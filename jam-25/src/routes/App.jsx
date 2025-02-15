@@ -915,8 +915,8 @@ const App = () => {
                 {
                   savedGameAvailable ? (
                     <>
-                      <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Saved Game</Typography>
-                      <Typography variant='body1' sx={{ fontFamily: 'Orbitron' }}>Round: {savedGameAvailable.round}</Typography>
+                      <Typography variant='overline' sx={{ fontFamily: 'Orbitron', textAlign: 'center' }}>Saved Game</Typography>
+                      <Typography variant='body1' sx={{ fontFamily: 'Orbitron', textAlign: 'center' }}>Round: {savedGameAvailable.round}</Typography>
                       <Box sx={{ mb: 1, display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
                         {
                           Array(savedGameAvailable?.maxJokers).fill().map((_, i) => (
@@ -925,14 +925,14 @@ const App = () => {
                         }
                       </Box>
                     </>
-                  ) : <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto'}}>No Saved Game Found</Typography>
+                  ) : <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center' }}>No Saved Game Found</Typography>
                 }
                 <Button className="button" disabled={!savedGameAvailable} variant="contained" onClick={loadGame}>
                   Load Saved Game
                 </Button>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, borderRadius: 4 }}>
-                <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto'}}>Start a new Game</Typography>
+                <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center' }}>Start a new Game</Typography>
                 <Button sx={{ mt: 'auto' }} className="button" variant="contained" onClick={handleNewGame}>
                   New Game
                 </Button>
@@ -949,11 +949,11 @@ const App = () => {
       <Dialog open={jokerDelete}>
         <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Sell Joker?</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2, maxWidth: '30%' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2 }}>
               {activeJoker}
               <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20, fontFamily: 'Orbitron' }}>{activeJoker?.props?.joker?.name}</Typography>
               <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{activeJoker?.props?.joker?.description}</Typography>
-              <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', fontFamily: 'Orbitron' }}>Refund: ${Math.floor(activeJoker?.props?.joker?.price / 2)}</Typography>
+              <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', fontFamily: 'Orbitron', textAlign: 'center' }}>Refund: ${Math.floor(activeJoker?.props?.joker?.price / 2)}</Typography>
             </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
           <Button className="button" variant="contained" sx={{ mr: 0.5 }} onClick={() => {
