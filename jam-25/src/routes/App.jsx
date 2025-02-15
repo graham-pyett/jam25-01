@@ -891,7 +891,7 @@ const App = () => {
   if (!gameStarted) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, boxSizing: 'border-box' }}>
-        <Box className="glow" sx={{ fontSize: '56px', mt: 4, textAlign: 'center', fontFamily: '"Orbitron", serif', fontWeight: 400, color: 'white' }}>
+        <Box className="glow" sx={{ fontSize: '56px', mt: 4, mb: 2, textAlign: 'center', fontFamily: '"Orbitron", serif', fontWeight: 400, color: 'white' }}>
           Glyphoria
         </Box>
         <MuiGrid container spacing={2}>
@@ -912,15 +912,21 @@ const App = () => {
           <MuiGrid size={{ xs: 12, md: 8 }} sx={{ borderRadius: 8, backgroundColor: 'rgba(189,189,189,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, boxSizing: 'border-box' }}>
             <Box sx={{ mt: 4, display: 'flex', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'lightgrey', borderRadius: 4 }}>
               <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'whitesmoke', borderRadius: 4, mr: 1 }}>
-                <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Saved Game</Typography>
-                <Typography variant='body1' sx={{ fontFamily: 'Orbitron' }}>Round: {savedGameAvailable.round}</Typography>
-                <Box sx={{ mb: 1, display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
-                  {
-                    Array(savedGameAvailable?.maxJokers).fill().map((_, i) => (
-                      <JokerSpace key={i} joker={savedGameAvailable?.jokers?.[i] ?? null} />
-                    ))
-                  }
-                </Box>
+                {
+                  savedGameAvailable ? (
+                    <>
+                      <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Saved Game</Typography>
+                      <Typography variant='body1' sx={{ fontFamily: 'Orbitron' }}>Round: {savedGameAvailable.round}</Typography>
+                      <Box sx={{ mb: 1, display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
+                        {
+                          Array(savedGameAvailable?.maxJokers).fill().map((_, i) => (
+                            <JokerSpace key={i} joker={savedGameAvailable?.jokers?.[i] ?? null} />
+                          ))
+                        }
+                      </Box>
+                    </>
+                  ) : <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto'}}>No Saved Game Found</Typography>
+                }
                 <Button className="button" disabled={!savedGameAvailable} variant="contained" onClick={loadGame}>
                   Load Saved Game
                 </Button>

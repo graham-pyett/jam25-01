@@ -111,9 +111,11 @@ const GameDataProvider = ({ children }) => {
   }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, jokers, maxJokers, gameStarted]);
 
   const savedGame = useCallback(() => {
-    const data = JSON.parse(localStorage.getItem('gameData')) ?? {};
-    data.inventory = data?.inventory?.map((i) => <InventoryItem key={i.id} item={i} />) ?? [];
-    data.jokers = data?.jokers?.map((j) => <Joker joker={j} id={j.id} />) ?? [];
+    const data = JSON.parse(localStorage.getItem('gameData')) ?? null;
+    if (data) {
+      data.inventory = data?.inventory?.map((i) => <InventoryItem key={i.id} item={i} />) ?? [];
+      data.jokers = data?.jokers?.map((j) => <Joker joker={j} id={j.id} />) ?? [];
+    }
     return data;
   }, []);
 
