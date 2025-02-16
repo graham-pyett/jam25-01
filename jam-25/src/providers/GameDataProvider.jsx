@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { getStarterLetters } from "../letters";
 import InventoryItem from "../components/InventoryItem";
 import Glyph from "../components/Glyph";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { firestore } from "../firebaseSetup/firebase";
 import { useUser } from "./UserProvider";
 
@@ -121,12 +121,7 @@ const GameDataProvider = ({ children }) => {
     const data = JSON.parse(localStorage.getItem('gameData')) ?? null;
     let userGame;
     if (user?.uid) {
-      const userRef = doc(firestore, 'users', user.uid);
-      getDoc(userRef).then((snap) => {
-        if (snap.exists()) {
-          userGame = snap.data().savedGame ? JSON.parse(snap.data().savedGame) : null;
-        }
-      });
+      userGame = user?.savedGame ? JSON.parse(user?.savedGame) : null;
     }
     let game = userGame ?? data;
     if (userGame && data) {
@@ -145,12 +140,9 @@ const GameDataProvider = ({ children }) => {
 
   const clearGame = useCallback(() => {
     localStorage.removeItem('gameData');
-    const userRef = doc(firestore, 'users', user.uid);
-    getDoc(userRef).then((snap) => {
-      if (snap.exists()) {
-        setDoc(doc(firestore, 'users', user.uid), { ...user, savedGame: null });
-      }
-    })
+    if (user?.uid) {
+      setDoc(doc(firestore, 'users', user.uid), { ...user, savedGame: null });
+    }
   }, [user]);
 
   const loadGame = useCallback(() => {

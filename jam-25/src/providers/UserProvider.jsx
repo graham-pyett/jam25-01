@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import auth from "../firebaseSetup/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { firestore } from "../firebaseSetup/firebase";
 
 const UserContext = createContext(null);
@@ -12,41 +12,54 @@ const UserProvider = ({ children }) => {
 
   const setDidTour = useCallback((value) => {
     setDidTourRaw(value);
-    setUser({ ...user, didTour: value });
+    if (user?.uid) {
+      setDoc(doc(firestore, 'users', user.uid), { ...user, didTour: value });
+    }
     localStorage.setItem('didTour', JSON.stringify(value));
   }, [user]);
 
   const setDidShopTour = useCallback((value) => {
     setDidShopTourRaw(value);
-    setUser({ ...user, didShopTour: value });
+    if (user?.uid) {
+      setDoc(doc(firestore, 'users', user.uid), { ...user, didShopTour: value });
+    }
     localStorage.setItem('didShopTour', JSON.stringify(value));
   }, [user]);
 
   useEffect(() => {
+    let unsubListener = () => {};
     const unregisterAuthObserver = auth.onAuthStateChanged((user) => {
       if (user?.uid) {
-        getDoc(doc(firestore, `users/${user.uid}`)).then((snap) => {
-          if (snap.exists()) {
-            setUser(snap.data());
-          }
+        unsubListener = onSnapshot(doc(firestore, "users", user.uid), (doc) => {
+          setUser(doc.data());
         });
+        
       } else {
+        unsubListener();
         setUser({ didTour: false, didShopTour: false });
       }
     });
 
-    return () => unregisterAuthObserver();
+    return () => { unsubListener(); unregisterAuthObserver(); };
   }, []);
 
   useEffect(() => {
     if (didTour !== user?.didTour) {
-      setUser({ ...user, didTour });
+      if (user?.uid) {
+        setDoc(doc(firestore, 'users', user?.uid), { ...user, didTour });
+      } else {
+        setUser({ ...user, didTour });
+      }
     }
   }, [didTour, user]);
 
   useEffect(() => {
     if (didShopTour !== user?.didShopTour) {
-      setUser({ ...user, didShopTour });
+      if (user?.uid) {
+        setDoc(doc(firestore, 'users', user.uid), { ...user, didShopTour });
+      } else {
+        setUser({ ...user, didShopTour });
+      }
     }
   }, [didShopTour, user]);
 
