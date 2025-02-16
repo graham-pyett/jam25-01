@@ -24,14 +24,14 @@ const UserProvider = ({ children }) => {
 
   useEffect(() => {
     const unregisterAuthObserver = auth.onAuthStateChanged((user) => {
-      if (user) {
+      if (user?.uid) {
         getDoc(doc(firestore, `users/${user.uid}`)).then((snap) => {
           if (snap.exists()) {
             setUser(snap.data());
           }
         });
       } else {
-        setUser({ didTour: false });
+        setUser({ didTour: false, didShopTour: false });
       }
     });
 

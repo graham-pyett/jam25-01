@@ -24,9 +24,9 @@ const Bonus = ({ bonus, placed }) => {
       <Box onClick={() => setTtipOpen(!ttipOpen)} onClose={() => setTtipOpen(false)} ref={setNodeRef} sx={{ ...bon.style, width: 'calc(100% + 6px)', height: 'calc(100% + 6px)', borderRadius: 2, boxSizing: 'border-box', position: 'absolute', top: -3, left: -3, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, color: 'white' }}>
         <Tooltip open={ttipOpen} disableFocusListener disableHoverListener disableTouchListener arrow placement="top" title={(
           <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Typography variant='h6' sx={{ fontSize: 14, fontFamily: 'Orbitron'}}>{bon.name}</Typography>
+            <Typography variant='h6' sx={{ fontSize: 14 }}>{bon.name}</Typography>
             <Typography variant='body2'>{bon.description}</Typography>
-            <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 10 }}>{bon.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][bon.rarity] : 'Common'}</Typography>
+            <Typography variant='overline' sx={{ fontSize: 10 }}>{bon.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][bon.rarity] : 'Common'}</Typography>
           </Box>
         )}>
           <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

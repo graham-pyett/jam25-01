@@ -3,12 +3,12 @@ import { Box } from "@mui/material";
 import React, { useMemo } from "react";
 import { useGameData } from "../providers/GameDataProvider";
 
-const JokerSpace = ({ joker, isGarbage = false, id }) => {
+const GlyphSpace = ({ glyph, isGarbage = false, id }) => {
   const { shopOpen } = useGameData();
   const { isOver, setNodeRef } = useDroppable({
     id: isGarbage ? 'garbage' : id,
     data: {
-      accepts: ['joker'],
+      accepts: ['glyph'],
     }
   });
 
@@ -25,9 +25,9 @@ const JokerSpace = ({ joker, isGarbage = false, id }) => {
         <Box sx={{ m: '3px', width: '44px', height: '44px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, backgroundColor: '#f5c9d0' }}>
           🗑️
         </Box>
-      ) : joker}
+      ) : glyph}
     </Box>
   );
 };
 
-export default JokerSpace;
+export default GlyphSpace;

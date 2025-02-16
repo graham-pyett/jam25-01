@@ -14,19 +14,22 @@ import InfoPanel from "../components/InfoPanel";
 import Submit from "../components/Submit";
 import BlankPicker from "../components/BlankPicker";
 import { calcTarget, useGameData } from "../providers/GameDataProvider";
-import { BONUSES, JOKERS } from "../upgrades";
+import { BONUSES, GLYPHS } from "../upgrades";
 import { v4 } from "uuid";
 import InventoryItem from "../components/InventoryItem";
 import InventoryTile from "../components/InventoryTile";
 import Inventory from "../components/Inventory";
 import Edge from "../components/Edge";
 import Swapper from "../components/Swapper";
-import Joker from "../components/Joker";
-import JokerSpace from "../components/JokerSpace";
+import Glyph from "../components/Glyph";
+import GlyphSpace from "../components/GlyphSpace";
 import { useUser } from "../providers/UserProvider";
 import Bag from "../components/Bag";
 import Blank from "../components/Blank";
 import Bomb from "../components/Bomb";
+import LoginModal from "../components/Login";
+import { signOut } from "firebase/auth";
+import auth from "../firebaseSetup/auth";
 
 // const TARGETS = [
 //   0,
@@ -57,7 +60,7 @@ import Bomb from "../components/Bomb";
 
 const App = () => {
   const { user, setDidTour, setDidShopTour } = useUser();
-  const  matches = useMediaQuery('(max-width: 900px)');
+  const  matches = useMediaQuery('(max-width:767px)');
   const {
     blanks, setBlanks,
     setFixedTiles, fixedTiles,
@@ -69,7 +72,7 @@ const App = () => {
     setRetrieving, 
     setSwapTiles, 
     shopOpen, setShopOpen, 
-    activeJoker, setActiveJoker,
+    activeGlyph, setActiveGlyph,
     gridSizeY, setGridSizeY,
     gridSizeX, setGridSizeX,
     tileLibrary, setTileLibrary,
@@ -78,8 +81,8 @@ const App = () => {
     bonusSpaces, setBonusSpaces,
     round, setRound,
     inventory, setInventory,
-    jokers, setJokers,
-    maxJokers, setMaxJokers,
+    glyphs, setGlyphs,
+    maxGlyphs, setMaxGlyphs,
     gameStarted, setGameStarted,
     loadGame, clearGame, savedGame } = useGameData();
   const tilesToDrawRef = useRef(13);
@@ -107,15 +110,20 @@ const App = () => {
   const [placementOpen, setPlacementOpen] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState([]);
   const [availableUpgradeTiles, setAvailableUpgradeTiles] = useState([]);
-  const [availableJokers, setAvailableJokers] = useState([]);
+  const [availableGlyphs, setAvailableGlyphs] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [possibleLetters, setPossibleLetters] = useState([]);
   const [bagOpen, setBagOpenRaw] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [jokerDelete, setJokerDelete] = useState(false);
+  const [glyphDelete, setGlyphDelete] = useState(false);
   const [bonusDelete, setBonusDelete] = useState(null);
   const [didStart, setDidStart] = useState(false);
   const [roundUpdated, setRoundUpdated] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const signOutUser = useCallback(() => {
+    signOut(auth);
+  }, []);
 
   const setBagOpen = useCallback((open) => {
     if (!open) {
@@ -171,18 +179,18 @@ const App = () => {
     }, Math.max(500 - (scoreRound * 200), 200)));
   }, [bonusSpaces, gridArray, setFunds, setScoringTiles]);
 
-  const getGlobalJokers = useCallback(() => {
-    return jokers.filter((j) => j.props?.joker?.global);
-  }, [jokers]);
+  const getGlobalGlyphs = useCallback(() => {
+    return glyphs.filter((j) => j.props?.glyph?.global);
+  }, [glyphs]);
 
-  const choosy = useMemo(() => !!getGlobalJokers().find((j) => j.props?.joker?.global?.choosy), [getGlobalJokers]);
+  const choosy = useMemo(() => !!getGlobalGlyphs().find((j) => j.props?.glyph?.global?.choosy), [getGlobalGlyphs]);
  
   const score = useCallback(async (newWords, scoreRound = 0) => {
     const validScore = await newWords.filter((w) => w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     const invalidScore = await newWords.filter((w) => !w.valid).reduce(async (promise, w) => promise.then(async (last) => last + await scoreWord(w, scoreRound)), Promise.resolve(0));
     let currentScore = validScore - invalidScore;
-    for (let j of jokers.filter((j) => j.props?.joker?.action)) {
-      const { newScore, newMoney, delta } = j.props?.joker?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore, target, funds, tray: trayArray }) ?? { newScore: currentScore, newMoney: 0, delta: 0 };
+    for (let j of glyphs.filter((j) => j.props?.glyph?.action)) {
+      const { newScore, newMoney, delta } = j.props?.glyph?.action?.({ words: [...words, newWords], grid: gridArray, totalScore: currentScore, validScore, invalidScore, target, funds, tray: trayArray }) ?? { newScore: currentScore, newMoney: 0, delta: 0 };
       currentScore = await new Promise((resolve) => setTimeout(async () => {
           setScoringTiles((old) => [...old, { id: j.props?.id, score: delta, placement: 'bottom', newMoney: newMoney ?? 0, scoreRound }]);
           setFunds((old) => old + (newMoney ?? 0));
@@ -196,12 +204,12 @@ const App = () => {
     }
     turnScores.current[currentTurnRef.current] = currentScore;
     return currentScore;
-  }, [funds, gridArray, jokers, scoreWord, setFunds, setScoringTiles, target, trayArray, words]);
+  }, [funds, gridArray, glyphs, scoreWord, setFunds, setScoringTiles, target, trayArray, words]);
 
   const start = useCallback(() => {
     setRetrieving([]);
     tilesOnBoard.current = [];
-    const ttd = tilesToDrawRef.current + (getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.draws ?? 0), 0));
+    const ttd = tilesToDrawRef.current + (getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.draws ?? 0), 0));
     const newAllTiles = shuffle(tileLibrary).map((l) => <Tile key={l.id} letter={l} id={l.id} dealable />);
     const drawn = newAllTiles.slice(0, ttd);
     setBag(newAllTiles.length - ttd);
@@ -210,8 +218,8 @@ const App = () => {
     setTrayArray(drawn);
     setBagTiles(drawn.map((t) => t.props.id));
     setDealing(true);
-    setTurns(3 + (getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.turns ?? 0), 0)));
-    setSwaps(3 + (getGlobalJokers()?.reduce((acc, j) => acc + (j.props?.joker?.global?.swaps ?? 0), 0)));
+    setTurns(3 + (getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.turns ?? 0), 0)));
+    setSwaps(3 + (getGlobalGlyphs()?.reduce((acc, j) => acc + (j.props?.glyph?.global?.swaps ?? 0), 0)));
     setSwapArray([]);
     currentTurnRef.current = 0;
     setCurrentTurn(1)
@@ -226,7 +234,7 @@ const App = () => {
       });
       return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
     })));
-  }, [setRetrieving, getGlobalJokers, tileLibrary, setBagTiles, setDealing, setTarget, round, gridSizeY, gridSizeX, bonusSpaces]);
+  }, [setRetrieving, getGlobalGlyphs, tileLibrary, setBagTiles, setDealing, setTarget, round, gridSizeY, gridSizeX, bonusSpaces]);
 
   const checkForWords = useCallback(() => {
     // find all words on the board
@@ -301,7 +309,7 @@ const App = () => {
     let newTurnScore = await score(newWords);
     const thisTurn = currentTurnRef.current;
     if (thisTurn === turns - 1) {
-      await Promise.all(getGlobalJokers()?.filter((j) => j.props?.joker?.global?.rescore).map(async (j, i) => {
+      await Promise.all(getGlobalGlyphs()?.filter((j) => j.props?.glyph?.global?.rescore).map(async (j, i) => {
         await new Promise((resolve) => setTimeout(async () => {
           setScoringTiles((old) => [...old, { id: j.props?.id, placement: 'bottom', scoreRound: i, text: 'Again!' }]);
           setTimeout(() => {
@@ -332,7 +340,7 @@ const App = () => {
       if (newTotalScore < target && currentTurnRef.current < turns) {
         await new Promise((resolve) => setTimeout(() => {
           setCurrentTurn((old) => old + 1);
-          const ttd = (tilesToDrawRef.current + getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.draws ?? 0), 0)) - trayArray.length - swapArray.length;
+          const ttd = (tilesToDrawRef.current + getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.draws ?? 0), 0)) - trayArray.length - swapArray.length;
           const drawn = allTiles.slice(0, ttd);
           setBag(allTiles.length - ttd);
           const newTray = [...trayArray, ...swapArray, ...drawn];
@@ -377,7 +385,7 @@ const App = () => {
         }, 800));
         
       }
-  }, [clearGame, allTiles, bonusSpaces, checkForWords, getGlobalJokers, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setRetrieving, setScoringTiles, setTurnOver, swapArray, target, totalScore, trayArray, turns]);
+  }, [clearGame, allTiles, bonusSpaces, checkForWords, getGlobalGlyphs, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setRetrieving, setScoringTiles, setTurnOver, swapArray, target, totalScore, trayArray, turns]);
 
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
@@ -448,22 +456,22 @@ const App = () => {
     setTrayArray(newTray.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
   }, [activeTile, setBlanks, trayArray]);
 
-  const handleDragJokerStart = useCallback((event) => {
-    const newActiveJoker = jokers.find((t) => t.props.id === event.active.id);
-    setActiveJoker(newActiveJoker);
-    setJokers((old) => {
+  const handleDragGlyphStart = useCallback((event) => {
+    const newActiveGlyph = glyphs.find((t) => t.props.id === event.active.id);
+    setActiveGlyph(newActiveGlyph);
+    setGlyphs((old) => {
       const oldIndex = old.findIndex((t) => t.props.id === event.active.id);
       const filtered = old.filter((t) => t.props.id !== event.active.id);
       const blankId = `blank_space_${v4()}`;
       filtered.splice(oldIndex, 0, <Blank key={blankId} id={blankId} />);
       return filtered;
     });
-  }, [jokers, setActiveJoker, setJokers]);
+  }, [glyphs, setActiveGlyph, setGlyphs]);
 
-  const handleDragJokerMove = useCallback((event) => {
-    if (activeJoker) {
-      if (event.over?.id && !event.over.id.startsWith('blank_space') && jokers.map((t) => [`${t.props.id}-left`, `${t.props.id}-right`]).flat().includes(event.over.id)) {
-        setJokers((old) => {
+  const handleDragGlyphMove = useCallback((event) => {
+    if (activeGlyph) {
+      if (event.over?.id && !event.over.id.startsWith('blank_space') && glyphs.map((t) => [`${t.props.id}-left`, `${t.props.id}-right`]).flat().includes(event.over.id)) {
+        setGlyphs((old) => {
           const filtered = old.filter((t) => !t.props.id.startsWith('blank_space'));
           if (event.over.id.endsWith('-left')) {
             filtered.splice(filtered.findIndex((t) => `${t.props.id}-left` === event.over.id) + 1, 0, <Blank key={`blank_space_${v4()}`} id={`blank_space_${v4()}`} />);
@@ -473,31 +481,31 @@ const App = () => {
           return filtered;
         });
       } else if (!event.over?.id?.startsWith('blank_space')) {
-        setJokers((old) => old.filter((t) => !t.props.id.startsWith('blank_space')));
+        setGlyphs((old) => old.filter((t) => !t.props.id.startsWith('blank_space')));
       }
     }
-  }, [activeJoker, jokers, setJokers]);
+  }, [activeGlyph, glyphs, setGlyphs]);
 
-  const handleDragJokerEnd = useCallback((event) => {
-    let newJokers = [...jokers];
-    if (activeJoker) {
+  const handleDragGlyphEnd = useCallback((event) => {
+    let newGlyphs = [...glyphs];
+    if (activeGlyph) {
       if (event.over?.id && (event.over.id.startsWith('blank_space') || event.over.id.endsWith('-left') || event.over.id.endsWith('-right'))) {
-        const blankInd = newJokers.findIndex((t) => t.props.id.startsWith('blank_space'));
-        newJokers.splice(blankInd >= 0 ? blankInd : newJokers.length, 1, activeJoker);
-        newJokers = newJokers.filter((t) => !t.props.id.startsWith('blank_space'));
-        setActiveJoker(null);
-        const uniqueTray = [...new Set(newJokers.map((t) => t.props.id))];
-        setJokers(newJokers.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
+        const blankInd = newGlyphs.findIndex((t) => t.props.id.startsWith('blank_space'));
+        newGlyphs.splice(blankInd >= 0 ? blankInd : newGlyphs.length, 1, activeGlyph);
+        newGlyphs = newGlyphs.filter((t) => !t.props.id.startsWith('blank_space'));
+        setActiveGlyph(null);
+        const uniqueTray = [...new Set(newGlyphs.map((t) => t.props.id))];
+        setGlyphs(newGlyphs.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
       } else if (event.over?.id && event.collisions.map((c) => c.id).includes('garbage')) {
-        setJokerDelete(true);
+        setGlyphDelete(true);
       } else {
-        newJokers = [...newJokers.filter((t) => !t.props.id.startsWith('blank_space')), activeJoker];
-        const uniqueTray = [...new Set(newJokers.map((t) => t.props.id))];
-        setJokers(newJokers.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
-        setActiveJoker(null);
+        newGlyphs = [...newGlyphs.filter((t) => !t.props.id.startsWith('blank_space')), activeGlyph];
+        const uniqueTray = [...new Set(newGlyphs.map((t) => t.props.id))];
+        setGlyphs(newGlyphs.filter((t) => uniqueTray.includes(t.props.id) && !t.props.id.startsWith('blank_space')));
+        setActiveGlyph(null);
       }
     }
-  }, [activeJoker, jokers, setActiveJoker, setJokers]);
+  }, [activeGlyph, glyphs, setActiveGlyph, setGlyphs]);
 
   const submitDisabled = useMemo(() => {
     return dealing || turnOver || !gridArray.flat().some((t) => t.tile && !fixedTiles.includes(t.tile.props.id));
@@ -659,15 +667,15 @@ const App = () => {
     const selectedBonus = filteredBonuses[bonusKey];
     const selectedLetter = bonuseLettersWithRarity[key];
     newAvailableUpgradeTiles.push({ key, ...selectedBonus, ...selectedLetter, rarity: Math.min(Math.ceil((selectedBonus.rarity + selectedLetter.rarity) / 2), 3), value: (selectedBonus.adder ?? 0) + selectedLetter.value, name: `${selectedBonus.name} - ${selectedLetter.letter}`, price: Math.floor((selectedLetter.price ?? selectedLetter.value) - 2 + selectedBonus.price), id: v4() });
-    const newAvailableJokers = [];
+    const newAvailableGlyphs = [];
     for (let i = 0; i < 2; i++) {
-      const keys = Object.keys(JOKERS);
+      const keys = Object.keys(GLYPHS);
       const key = keys[Math.floor(Math.random() * keys.length)];
-      newAvailableJokers.push({ key, ...JOKERS[key], id: v4() });
+      newAvailableGlyphs.push({ key, ...GLYPHS[key], id: v4() });
     }
     setAvailableUpgrades(newAvailableUpgrades)
     setAvailableUpgradeTiles(newAvailableUpgradeTiles)
-    setAvailableJokers(newAvailableJokers);
+    setAvailableGlyphs(newAvailableGlyphs);
     setRoundOver(false);
     setShopOpen(true);
   }, [getNewFunds, inventory, setFunds, setShopOpen]);
@@ -729,15 +737,15 @@ const App = () => {
     tilesToDrawRef.current = 13;
     setGameOver(false);
     setRound(1);
-    setJokers([]);
-    setMaxJokers(5);
+    setGlyphs([]);
+    setMaxGlyphs(5);
     setTileLibrary(getStarterLetters());
     setBonusSpaces([{ id: `${Math.floor(newGridSize / 2)},${Math.floor(newGridSize / 2)}`, bonus: 'BDW' }]);
     setGameStarted(false);
     setFunds(3);
     turnScores.current = [];
     setGameStarted(true);
-  }, [setBonusSpaces, setFunds, setGameStarted, setGridSizeY, setInventory, setJokers, setMaxJokers, setRound, setTileLibrary]);
+  }, [setBonusSpaces, setFunds, setGameStarted, setGridSizeY, setInventory, setGlyphs, setMaxGlyphs, setRound, setTileLibrary]);
 
   useEffect(() => {
     if (gameStarted && !didStart) {
@@ -833,22 +841,22 @@ const App = () => {
       content: "If you don't like your letters, you can swap tiles from your tray for new ones. You have 3 swaps per round.",
     },
     {
-      content: 'After each successful round you can buy upgrades in the shop. You can also buy jokers to help you increase your score.',
+      content: 'After each successful round you can buy upgrades in the shop. You can also buy glyphs to help you increase your score.',
     },
   ], []);
 
   const shopSteps = useMemo(() => [
     {
       selector: '.shop',
-      content: 'This is the shop. Spend your money here to buy upgrades and jokers.',
+      content: 'This is the shop. Spend your money here to buy upgrades and glyphs.',
     },
     {
       selector: '.inventory',
       content: 'Your inventory shows purchased upgrades that have not yet been used.',
     },
     {
-      selector: '.jokers',
-      content: 'Jokers are used to add bonuses to your score. They are automatically activated at the end of each turn, in order from left to right.',
+      selector: '.glyphs',
+      content: 'Glyphs are used to add bonuses to your score. They are automatically activated at the end of each turn, in order from left to right.',
     },
     {
       selector: '.upgrades',
@@ -880,7 +888,7 @@ const App = () => {
     return [...tileLibrary].sort((a, b) => a.letter.localeCompare(b.letter));
   }, [tileLibrary]);
 
-  const availableFunds = useMemo(() => (funds ?? 0) + (getGlobalJokers().reduce((acc, j) => acc + (j.props?.joker?.global?.debt ?? 0), 0)), [funds, getGlobalJokers]);
+  const availableFunds = useMemo(() => (funds ?? 0) + (getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.debt ?? 0), 0)), [funds, getGlobalGlyphs]);
 
   const savedGameAvailable = useMemo(() => {
     if (!gameStarted) {
@@ -910,29 +918,39 @@ const App = () => {
             </Box>
           </MuiGrid>
           <MuiGrid size={{ xs: 12, md: 8 }} sx={{ borderRadius: 8, backgroundColor: 'rgba(189,189,189,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, boxSizing: 'border-box' }}>
+            <Box>
+              {
+                user?.uid ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="h5">Welcome, {user.name}!</Typography>
+                    <Button sx={{ ml: 2 }} className="button" variant="contained" onClick={signOutUser}>Logout</Button>
+                  </Box>
+                ) : <Button className="button" variant="contained" onClick={() => setLoginOpen(true)}>Login</Button>
+              }
+            </Box>
             <Box sx={{ mt: 4, display: 'flex', flexDirection: 'row', justifyContent: 'center', backgroundColor: 'lightgrey', borderRadius: 4 }}>
               <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'whitesmoke', borderRadius: 4, mr: 1 }}>
                 {
                   savedGameAvailable ? (
                     <>
-                      <Typography variant='overline' sx={{ fontFamily: 'Orbitron', textAlign: 'center' }}>Saved Game</Typography>
-                      <Typography variant='body1' sx={{ fontFamily: 'Orbitron', textAlign: 'center' }}>Round: {savedGameAvailable.round}</Typography>
+                      <Typography variant='overline' sx={{ textAlign: 'center' }}>Saved Game</Typography>
+                      <Typography variant='body1' sx={{ textAlign: 'center' }}>Round: {savedGameAvailable.round}</Typography>
                       <Box sx={{ mb: 1, display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
                         {
-                          Array(savedGameAvailable?.maxJokers).fill().map((_, i) => (
-                            <JokerSpace key={i} joker={savedGameAvailable?.jokers?.[i] ?? null} />
-                          ))
+                          savedGameAvailable?.glyphs?.length ? Array(savedGameAvailable?.maxGlyphs).fill().map((_, i) => (
+                            <GlyphSpace key={i} glyph={savedGameAvailable?.glyphs?.[i] ?? null} />
+                          )) : <Typography variant='overline' sx={{ fontStyle: 'italic', color: 'whitesmoke', mt: 'auto', textAlign: 'center' }}>No Glyphs</Typography>
                         }
                       </Box>
                     </>
-                  ) : <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center' }}>No Saved Game Found</Typography>
+                  ) : <Typography variant='overline' sx={{ mt: 'auto', textAlign: 'center' }}>No Saved Game Found</Typography>
                 }
                 <Button className="button" disabled={!savedGameAvailable} variant="contained" onClick={loadGame}>
                   Load Saved Game
                 </Button>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, borderRadius: 4 }}>
-                <Typography variant='overline' sx={{ fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center' }}>Start a new Game</Typography>
+                <Typography variant='overline' sx={{ mt: 'auto', textAlign: 'center' }}>Start a new Game</Typography>
                 <Button sx={{ mt: 'auto' }} className="button" variant="contained" onClick={handleNewGame}>
                   New Game
                 </Button>
@@ -940,34 +958,35 @@ const App = () => {
             </Box>
           </MuiGrid>
       </MuiGrid>
+      <LoginModal show={loginOpen} setShow={setLoginOpen} />
     </Box>
     );
   }
 
   return (
     <>
-      <Dialog open={jokerDelete}>
-        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Sell Joker?</DialogTitle>
+      <Dialog open={glyphDelete}>
+        <DialogTitle>Sell Glyph?</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2 }}>
-              {activeJoker}
-              <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20, fontFamily: 'Orbitron' }}>{activeJoker?.props?.joker?.name}</Typography>
-              <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{activeJoker?.props?.joker?.description}</Typography>
-              <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', fontFamily: 'Orbitron', textAlign: 'center' }}>Refund: ${Math.floor(activeJoker?.props?.joker?.price / 2)}</Typography>
+              {activeGlyph}
+              <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20 }}>{activeGlyph?.props?.glyph?.name}</Typography>
+              <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{activeGlyph?.props?.glyph?.description}</Typography>
+              <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', textAlign: 'center' }}>Refund: ${Math.floor(activeGlyph?.props?.glyph?.price / 2)}</Typography>
             </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
           <Button className="button" variant="contained" sx={{ mr: 0.5 }} onClick={() => {
-            const newJokers = [...jokers.filter((t) => !t.props.id.startsWith('blank_space')), activeJoker];
-            setJokers(newJokers);
-            setJokerDelete(false);
-            setActiveJoker(null);
+            const newGlyphs = [...glyphs.filter((t) => !t.props.id.startsWith('blank_space')), activeGlyph];
+            setGlyphs(newGlyphs);
+            setGlyphDelete(false);
+            setActiveGlyph(null);
           }}>
                 Cancel
             </Button>
             <Button className="button" variant="contained" sx={{ ml: 0.5 }} onClick={() => {
-              setFunds((old) => old + Math.floor(activeJoker.props.joker.price / 2));
-              setJokerDelete(false);
-              setActiveJoker(null);
+              setFunds((old) => old + Math.floor(activeGlyph.props.glyph.price / 2));
+              setGlyphDelete(false);
+              setActiveGlyph(null);
             }}>
                 Sell
             </Button>
@@ -975,12 +994,12 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={bonusDelete}>
-        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Remove Bonus?</DialogTitle>
+        <DialogTitle>Remove Bonus?</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Box sx={{ display: 'flex', width: '80%', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', m: 1, p: 2, ...bonusDelete?.style }}>
-            <Typography variant='h6' sx={{ fontFamily: 'Orbitron' }}>{bonusDelete?.name}</Typography>
+            <Typography variant='h6'>{bonusDelete?.name}</Typography>
             <Typography variant='body1' sx={{ textAlign: 'center' }}>{bonusDelete?.description}</Typography>
-            <Typography variant='body1' sx={{ color: 'goldenrod', fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center', width: bonusDelete?.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Refund: ${Math.floor(bonusDelete?.price / 2)}</Typography>
+            <Typography variant='body1' sx={{ color: 'goldenrod', mt: 'auto', textAlign: 'center', width: bonusDelete?.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Refund: ${Math.floor(bonusDelete?.price / 2)}</Typography>
           </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
             <Button className="button" variant="contained" sx={{ mr: 0.5 }} onClick={() => {
@@ -1007,19 +1026,19 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={roundOver}>
-        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>Round Over</DialogTitle>
+        <DialogTitle>Round Over</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ fontSize: '24px', mt: 2, fontFamily: 'Orbitron' }}>Round {round} Defeated!</Box>
-            <Box sx={{ fontSize: '24px', mt: 2, color: '#11adab', fontFamily: 'Orbitron' }}>Total Score: {totalScore}/{target}</Box>
+            <Box sx={{ fontSize: '24px', mt: 2 }}>Round {round} Defeated!</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, color: '#11adab' }}>Total Score: {totalScore}/{target}</Box>
       
-              <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Money Earned:</span><span>+${getNewFunds().total}</span></Box>
+              <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Money Earned:</span><span>+${getNewFunds().total}</span></Box>
               <Divider />
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Base:</span><span>+${getNewFunds().base}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Remaining Turns:</span><span>+${getNewFunds().turns}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Remaining Swaps:</span><span>+${getNewFunds().swaps}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Word bonus:</span><span>+${getNewFunds().words}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between', fontFamily: 'Orbitron' }}><span>Interest:</span><span>+${getNewFunds().interest}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Base:</span><span>+${getNewFunds().base}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Remaining Turns:</span><span>+${getNewFunds().turns}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Remaining Swaps:</span><span>+${getNewFunds().swaps}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Word bonus:</span><span>+${getNewFunds().words}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Interest:</span><span>+${getNewFunds().interest}</span></Box>
           </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
             <Button className="button" variant="contained" onClick={handleOpenShop}>Open Shop</Button>
@@ -1027,57 +1046,57 @@ const App = () => {
         </DialogContent>
       </Dialog>
       <Dialog open={shopOpen}>
-        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', fontFamily: 'Orbitron' }}>
-            <Typography variant='h5' sx={{ fontFamily: 'Orbitron' }}>Shop!</Typography>
-            <Typography variant='h5' sx={{ color: 'goldenrod', fontFamily: 'Orbitron' }}>${funds}</Typography>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Typography variant='h5'>Shop!</Typography>
+            <Typography variant='h5' sx={{ color: 'goldenrod' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
         <DialogContent className="shop" sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
+          <Typography variant='overline'>Inventory</Typography>
           <Box className="inventory" sx={{ minHeight: 50, mb: 2, p: 1, backgroundColor: 'gainsboro', border: '1px solid lightgrey', borderRadius: '8px' }}>
             {inventoryItems}
           </Box>
-          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Jokers</Typography>
-          <DndContext sensors={sensors} onDragStart={handleDragJokerStart} onDragEnd={handleDragJokerEnd} onDragMove={handleDragJokerMove}>
+          <Typography variant='overline'>Glyphs</Typography>
+          <DndContext sensors={sensors} onDragStart={handleDragGlyphStart} onDragEnd={handleDragGlyphEnd} onDragMove={handleDragGlyphMove}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: 'gainsboro', borderRadius: '8px' }}>
               {
-                Array(maxJokers).fill().map((_, i) => (
-                  <JokerSpace key={i} id={v4()} joker={jokers[i] ?? null} />
+                Array(maxGlyphs).fill().map((_, i) => (
+                  <GlyphSpace key={i} id={v4()} glyph={glyphs[i] ?? null} />
                 ))
               }
               <Box sx={{ ml: 1 }}>
-                <JokerSpace isGarbage id={v4()} joker={null} />
+                <GlyphSpace isGarbage id={v4()} glyph={null} />
               </Box>
             </Box>
             <DragOverlay>
-              {activeJoker}
+              {activeGlyph}
             </DragOverlay>
           </DndContext>
-          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Jokers</Typography>
-          <Box className="jokers" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Typography variant='overline'>Available Glyphs</Typography>
+          <Box className="glyphs" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
-              {availableJokers.map((u) => (
+              {availableGlyphs.map((u) => (
                 <Box key={u.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2, maxWidth: '30%' }}>
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
-                  <Joker joker={u} id={u.id} />
-                  <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20, fontFamily: 'Orbitron' }}>{u.name}</Typography>
+                  <Glyph glyph={u} id={u.id} />
+                  <Typography variant='h6' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20 }}>{u.name}</Typography>
                   <Typography variant='body1' sx={{ textAlign: 'center', fontSize: matches ? 14 : 16 }}>{u.description}</Typography>
-                  <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod', fontFamily: 'Orbitron' }}>Price: ${u.price}</Typography>
-                  <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || availableFunds < u.price || jokers.length >= maxJokers} onClick={() => {
+                  <Typography variant='body1' sx={{ mt: 'auto', color: 'goldenrod' }}>Price: ${u.price}</Typography>
+                  <Button disabled={u.disabled || availableFunds < u.price || glyphs.length >= maxGlyphs} onClick={() => {
                     if (availableFunds >= u.price) {
                       setFunds((old) => old - u.price);
-                      setJokers((old) => [...old, <Joker joker={u} id={u.id} />]);
-                      setAvailableJokers((old) => old.map((a) => ({ ...a, disabled: a.id === u.id })));
+                      setGlyphs((old) => [...old, <Glyph glyph={u} id={u.id} />]);
+                      setAvailableGlyphs((old) => old.map((a) => ({ ...a, disabled: a.id === u.id })));
                     }
                   }}>Buy</Button>
                 </Box>
               ))}
             </Box>
           </Box>
-          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Upgrades</Typography>
+          <Typography variant='overline'>Available Upgrades</Typography>
           <Box className="upgrades" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: -2 }}>	
               {availableUpgrades.map((u) => (
@@ -1085,17 +1104,17 @@ const App = () => {
                   {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
-                  <Typography variant='h6' sx={{ fontFamily: 'Orbitron' }}>{u.name}</Typography>
+                  <Typography variant='h6'>{u.name}</Typography>
                   <Typography variant='body1' sx={{ textAlign: 'center' }}>{u.description}</Typography>
-                  <Typography variant='body1' sx={{ color: 'goldenrod', fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center', width: u.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Price: ${u.price}</Typography>
-                  <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || availableFunds < u.price} onClick={() => {
+                  <Typography variant='body1' sx={{ color: 'goldenrod', mt: 'auto', textAlign: 'center', width: u.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Price: ${u.price}</Typography>
+                  <Button disabled={u.disabled || availableFunds < u.price} onClick={() => {
                     if (availableFunds >= u.price) {
                       setFunds((old) => old - u.price);
                       if (u.placement) {
                         setInventory((old) => [...old, <InventoryItem key={u.id} item={u} />]);
                       } else {
-                        if (u.text === 'JOKER') {
-                          setMaxJokers((old) => old + 1);
+                        if (u.text === 'GLYPH') {
+                          setMaxGlyphs((old) => old + 1);
                         }
                       }
                       setAvailableUpgrades((old) => old.map((a) => ({ ...a, disabled: a.id === u.id })));
@@ -1105,7 +1124,7 @@ const App = () => {
               ))}
             </Box>
           </Box>
-          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Available Tiles</Typography>
+          <Typography variant='overline'>Available Tiles</Typography>
           <Box className="tiles" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', mt: matches ? -1 : -2 }}>	
               {availableUpgradeTiles.map((u) => (
@@ -1114,10 +1133,10 @@ const App = () => {
                     u.disabled && <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', zIndex: 5 }} />
                   }
                   <Tile letter={u} id={u.id} />
-                  { u.name && <Typography variant='h6' sx={{ fontFamily: 'Orbitron' }}>{u.name}</Typography> }
+                  { u.name && <Typography variant='h6'>{u.name}</Typography> }
                   { u.description && <Typography variant='body1' sx={{ textAlign: 'center' }}>{u.description}</Typography> }
-                  <Typography variant='body1' sx={{ color: 'goldenrod', fontFamily: 'Orbitron', mt: 'auto', textAlign: 'center', width: u.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Price: ${u.price}</Typography>
-                  <Button sx={{ fontFamily: 'Orbitron' }} disabled={u.disabled || availableFunds < u.price} onClick={() => {
+                  <Typography variant='body1' sx={{ color: 'goldenrod', mt: 'auto', textAlign: 'center', width: u.description ? 145 : 'auto', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%)' }}>Price: ${u.price}</Typography>
+                  <Button disabled={u.disabled || availableFunds < u.price} onClick={() => {
                     if (availableFunds >= u.price) {
                       setFunds((old) => old - u.price);
                       setTileLibrary((old) => [...old, u]);
@@ -1134,15 +1153,15 @@ const App = () => {
         </Box>
       </Dialog>
       <Dialog open={placementOpen}>
-        <DialogTitle sx={{ fontFamily: 'Orbitron' }}>
+        <DialogTitle>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
             <Typography variant='h5'>Shop!</Typography>
             <Typography variant='h5' sx={{ color: 'goldenrod' }}>${funds}</Typography>
           </Box>
         </DialogTitle>
         <DialogContent sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          <Typography variant='overline' sx={{ fontFamily: 'Orbitron' }}>Inventory</Typography>
-          <Typography variant='body1' sx={{ fontFamily: 'Orbitron' }}>Drag upgrades to the board or tiles to improve them.</Typography>
+          <Typography variant='overline'>Inventory</Typography>
+          <Typography variant='body1'>Drag upgrades to the board or tiles to improve them.</Typography>
           <DndContext sensors={sensors} onDragStart={handleDragInventoryStart} onDragEnd={handleDragInventoryEnd}>
               <Inventory items={inventoryItems} />
               <DragOverlay>
@@ -1176,9 +1195,9 @@ const App = () => {
       <Dialog open={gameOver}>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ fontSize: '24px', mt: 2, fontFamily: 'Orbitron' }}>Game Over</Box>
+            <Box sx={{ fontSize: '24px', mt: 2 }}>Game Over</Box>
             <Box sx={{ fontSize: '24px', mt: 2 }}>You beat <span style={{ fontFamily: 'Orbitron', color: '#11adab' }}>{round - 1}</span> rounds</Box>
-            <Box sx={{ fontSize: '24px', mt: 2, color: '#8a1e39', fontFamily: 'Orbitron' }}>Total Score: {totalScore}/{target}</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, color: '#8a1e39' }}>Total Score: {totalScore}/{target}</Box>
             <Box sx={{ mt: 2 }}>
               { navigator.share ? (<Button className="button" variant="contained" sx={{ mr: 1 }} onClick={handleShare}><ShareIcon /> Share</Button>) : null }
               <Button className="button" variant="contained" onClick={() => setGameStarted(false)}>Start Over</Button>
@@ -1190,11 +1209,11 @@ const App = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '300px' : undefined }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           {
-            jokers?.length > 0 && (
+            glyphs?.length > 0 && (
               <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: matches ? 100 : 120, left: '50%', transform: 'translateX(-50%)', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
                 {
-                  Array(maxJokers).fill().map((_, i) => (
-                    <JokerSpace key={i} joker={jokers[i] ?? null} />
+                  Array(maxGlyphs).fill().map((_, i) => (
+                    <GlyphSpace key={i} glyph={glyphs[i] ?? null} />
                   ))
                 }
               </Box>

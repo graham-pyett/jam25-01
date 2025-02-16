@@ -181,7 +181,7 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
           
             <Tooltip disableFocusListener disableHoverListener disableTouchListener arrow open={ttipOpen} onClose={() => setTtipOpen(false)} placement="top" title={(
               <Box sx={{ fontSize: 12, color: 'white',  borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Typography variant='h6' sx={{ fontFamily: 'Orbitron'}}>{letter.letter}</Typography>
+                <Typography variant='h6'>{letter.letter}</Typography>
                 {
                   letter.multiplier ? (<Typography variant='body2'>{letter.scope === 'letter' ? `${letter.multiplier} x ${letter.value} ${letter.value !== 1 ? 'points' : 'point'}` : `${letter.multiplier} x word score`}</Typography>)
                   : (<Typography variant='body2'>{letter.value} {letter.value !== 1 ? 'points' : 'point'}</Typography>)
@@ -190,16 +190,16 @@ const Tile = ({ sx, letter, id, dealable, disabled, bagTile }) => {
                   letter.money ? (<Typography variant='body2'>+${letter.money}</Typography>)
                   : null
                 }
-                <Typography variant='overline' sx={{ fontFamily: 'Orbitron', fontSize: 8 }}>{letter.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][letter.rarity] : 'Common'}</Typography>
+                <Typography variant='overline' sx={{ fontSize: 8 }}>{letter.rarity ? ['Common', 'Uncommon', 'Rare', 'Shiny'][letter.rarity] : 'Common'}</Typography>
               </Box>
             )}>
               <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>	
                 {displayedLetter}
               </Box>
-              <Box ref={setNodeRefDropLeft} {...dropLeftList} {...dropRightAttr} sx={{ height: '100%', width: '45%', position: 'absolute', left: 0 }} />
-              <Box sx={{ height:'100%', width: '45%', position: 'absolute', right: 0 }} ref={setNodeRefDropRight} {...dropRightList} {...dropLeftAttr} />
+              <Box ref={setNodeRefDropLeft} {...dropLeftList} {...dropLeftAttr} sx={{ height: '100%', width: '45%', position: 'absolute', top: 0, left: 0 }} />
+              <Box sx={{ height:'100%', width: '45%', position: 'absolute', top: 0, right: 0 }} ref={setNodeRefDropRight} {...dropRightList} {...dropRightAttr} />
             </Tooltip>
-          <Box sx={{ position: 'absolute', bottom: displayedLetter.length > 2 ? -1 : 1, right: 4, fontSize: '10px', fontFamily: 'Orbitron' }}>
+          <Box sx={{ position: 'absolute', bottom: displayedLetter.length > 2 ? -1 : 1, right: 4, fontSize: '10px' }}>
             {letter.value}
           </Box>
           <Tooltip arrow open={!!scoringTileTop} title={<span style={{ fontFamily: 'Orbitron', fontSize: 16, color: scoringTileTop?.score < 0 ? '#ff9ca7' : '#b3faaa'}}>

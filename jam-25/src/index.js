@@ -7,6 +7,7 @@ import reportWebVitals from './reportWebVitals';
 import App from './routes/App';
 import { UserProvider } from './providers/UserProvider';
 import { GameDataProvider } from './providers/GameDataProvider';
+import { createTheme, ThemeProvider } from '@mui/material';
 
 const router = createBrowserRouter([
   {
@@ -15,14 +16,31 @@ const router = createBrowserRouter([
   },
 ]);
 
+const theme = createTheme({
+  components: {
+    MuiTypography: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Orbitron, sans-serif',
+        },
+        overline: {
+          lineHeight: 1.5,
+        }
+      }
+    }
+  }
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <UserProvider>
-      <GameDataProvider>
-        <RouterProvider router={router} />
-      </GameDataProvider>
-    </UserProvider>
+    <ThemeProvider theme={theme}>
+      <UserProvider>
+        <GameDataProvider>
+          <RouterProvider router={router} />
+        </GameDataProvider>
+      </UserProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );
 
