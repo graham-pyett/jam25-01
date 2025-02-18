@@ -11,12 +11,12 @@ export const BONUSES = {
   TTW: { rarity: 3, price: 7, name: 'Triple Word Tile', description: "Triples the base score for words this letter is part of", text: '3xW', multiplier: 3, adder: 0, placement: 'tile', scope: 'word', style: { backgroundColor: 'rgba(219, 209, 22, 0.4)', border: '4px double rgb(219, 209, 22)' } },
   EDGE: { rarity: 1, price: 10, name: 'Board Edge', description: 'Place this upgrade on the edge of the board give yourself more room to play', text: 'EDGE', placement: 'edge', style: { backgroundColor: 'rgba(102, 105, 112, 0.6)', border: '4px double rgb(102, 105, 112)' } },
   GLYPH: { rarity: 3, price: 15, name: 'Glyph', description: 'Purchase this upgrade to permanently add a glyph space', text: 'GLYPH', placement: false, style: { backgroundColor: 'rgba(150, 30, 114, 0.6)', border: '4px double rgb(150, 30, 114)' } },
-  TP1: { rarity: 0, price: 3, name: '+1 Base Score', description: 'Place this upgrade on a tile to increase its base score by one', text: '+1L', multiplier: 0, adder: 1, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(190, 71, 237, 0.4)', border: '4px double rgb(190, 71, 237)' }, threshhold: 4 },
-  TP3: { rarity: 1, price: 5, name: '+3 Base Score', description: 'Place this upgrade on a tile to increase its base score by three', text: '+3L', multiplier: 0, adder: 3, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(16, 143, 227, 0.4)', border: '4px double rgb(16, 143, 227)' }, threshhold: 4 },
-  TP5: { rarity: 2, price: 7, name: '+5 Base Score', description: 'Place this upgrade on a tile to increase its base score by five', text: '+5L', multiplier: 0, adder: 5, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(72, 99, 43, 0.4)', border: '4px double rgb(72, 99, 43)' }, threshhold: 4 },
-  BP1: { rarity: 1, price: 4, name: '+1 Letter Space', description: 'Increase the base score of any word played on it by one', text: '+1L', multiplier: 0, adder: 1, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(224, 88, 70, 0.4)', border: '4px double rgb(224, 88, 70)' }, threshhold: 4 },
-  BP3: { rarity: 2, price: 6, name: '+3 Letter Space', description: 'Increase the base score of any word played on it by three', text: '+3L', multiplier: 0, adder: 3, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(230, 53, 97, 0.4)', border: '4px double rgb(230, 53, 97)' }, threshhold: 4 },
-  BP5: { rarity: 3, price: 8, name: '+5 Letter Space', description: 'Increase the base score of any word played on it by five', text: '+5L', multiplier: 0, adder: 5, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(166, 113, 227, 0.4)', border: '4px double rgb(166, 113, 227)' }, threshhold: 4 },
+  TP1: { rarity: 0, price: 2, name: '+1 Base Score', description: 'Place this upgrade on a tile to increase its base score by one', text: '+1L', multiplier: 0, adder: 1, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(190, 71, 237, 0.4)', border: '4px double rgb(190, 71, 237)' }, threshhold: 4 },
+  TP3: { rarity: 1, price: 4, name: '+3 Base Score', description: 'Place this upgrade on a tile to increase its base score by three', text: '+3L', multiplier: 0, adder: 3, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(16, 143, 227, 0.4)', border: '4px double rgb(16, 143, 227)' }, threshhold: 4 },
+  TP5: { rarity: 2, price: 6, name: '+5 Base Score', description: 'Place this upgrade on a tile to increase its base score by five', text: '+5L', multiplier: 0, adder: 5, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(72, 99, 43, 0.4)', border: '4px double rgb(72, 99, 43)' }, threshhold: 4 },
+  BP1: { rarity: 1, price: 3, name: '+1 Letter Space', description: 'Increase the base score of any word played on it by one', text: '+1L', multiplier: 0, adder: 1, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(224, 88, 70, 0.4)', border: '4px double rgb(224, 88, 70)' }, threshhold: 4 },
+  BP3: { rarity: 2, price: 5, name: '+3 Letter Space', description: 'Increase the base score of any word played on it by three', text: '+3L', multiplier: 0, adder: 3, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(230, 53, 97, 0.4)', border: '4px double rgb(230, 53, 97)' }, threshhold: 4 },
+  BP5: { rarity: 3, price: 7, name: '+5 Letter Space', description: 'Increase the base score of any word played on it by five', text: '+5L', multiplier: 0, adder: 5, placement: 'board', scope: 'letter', style: { backgroundColor: 'rgba(166, 113, 227, 0.4)', border: '4px double rgb(166, 113, 227)' }, threshhold: 4 },
   TM1: { rarity: 3, price: 3, name: '+$1', description: 'Place this upgrade on a tile to earn $1 every time it is scored', text: '+$1', money: 1, multiplier: 0, adder: 0, placement: 'tile', scope: 'letter', style: { backgroundColor: 'rgba(214, 168, 0, 0.4)', border: '4px double rgb(214, 168, 0)' }, threshhold: 4 },
 };
 
@@ -451,9 +451,12 @@ export const GLYPHS = [
       totalScore,
       invalidScore
     }) => {
-      const lowestScoreTile = tray.reduce((acc, t) => {
+      let lowestScoreTile = tray.reduce((acc, t) => {
         return t.props?.letter?.value < acc ? t.props.letter.value : acc;
-      });
+      }, 1000);
+      if (lowestScoreTile === 1000) {
+        lowestScoreTile = 1;
+      }
       return {
         newScore: totalScore * lowestScoreTile,
         delta: totalScore * (lowestScoreTile - 1),
@@ -466,3 +469,111 @@ export const GLYPHS = [
     }
   },
 ];
+
+export const LAYOUTS = {
+  BASE: {
+    name: 'Square',
+    gridSizeX: 7,
+    gridSizeY: 7,
+    edges: [
+      'TOP', 'LEFT', 'RIGHT', 'BOTTOM'
+    ],
+    bonuses: [
+      { id: '3,3', bonus: 'BDW' }
+    ],
+    blacks: [],
+    round1Target: 40,
+    maxGlyphs: 5,
+    tilesToDraw: 13,
+    addEdge: (edge, row, col) => false, 
+  },
+  CROSS: {
+    name: 'Cross',
+    gridSizeX: 9,
+    gridSizeY: 9,
+    edges: ['TOP', 'LEFT', 'RIGHT', 'BOTTOM'],
+    bonuses: [
+      { id: '4,4', bonus: 'BTW' }
+    ],
+    blacks: [
+      '0,0', '0,1', '0,2', '0,6', '0,7', '0,8',
+      '1,0', '1,1', '1,2', '1,6', '1,7', '1,8',
+      '2,0', '2,1', '2,2', '2,6', '2,7', '2,8',
+      '6,0', '6,1', '6,2', '6,6', '6,7', '6,8',
+      '7,0', '7,1', '7,2', '7,6', '7,7', '7,8',
+      '8,0', '8,1', '8,2', '8,6', '8,7', '8,8'
+    ],
+    round1Target: 70,
+    maxGlyphs: 6,
+    tilesToDraw: 13,
+    addEdge: (edge, row, col) => {
+      switch (edge) {
+        case 'TOP':
+        case 'BOTTOM':
+          return col < 3 || col > 5;
+        case 'LEFT':
+        case 'RIGHT':
+          return row < 3 || row > 5;
+        default:
+          return false;
+      }
+    }
+  },
+  DIAMOND: {
+    name: 'Diamond',
+    gridSizeX: 11,
+    gridSizeY: 11,
+    edges: false,
+    bonuses: [
+      { id: '0,5', bonus: 'BTL' },
+      { id: '5,0', bonus: 'BTL' },
+      { id: '5,10', bonus: 'BTL'},
+      { id: '10,5', bonus: 'BTL' }
+    ],
+    blacks: [
+      '0,0', '0,1', '0,2', '0,3', '0,4', '0,6', '0,7', '0,8', '0,9', '0,10',
+      '1,0', '1,1', '1,2', '1,3',               '1,7', '1,8', '1,9', '1,10',
+      '2,0', '2,1', '2,2',                             '2,8', '2,9', '2,10',
+      '3,0', '3,1',                                           '3,9', '3,10',
+      '4,0',                                                         '4,10',
+      '6,0',                                                         '6,10',
+      '7,0', '7,1',                                           '7,9', '7,10',
+      '8,0', '8,1', '8,2',                             '8,8', '8,9', '8,10',
+      '9,0', '9,1', '9,2', '9,3',               '9,7', '9,8', '9,9', '9,10',
+      '10,0', '10,1', '10,2', '10,3', '10,4', '10,6', '10,7', '10,8', '10,9', '10,10'
+    ],
+    round1Target: 60,
+    maxGlyphs: 5,
+    tilesToDraw: 11,
+    addEdge: (edge, row, col) => false,
+  },
+  GRID: {
+    name: 'Crossword',
+    gridSizeX: 13,
+    gridSizeY: 13,
+    edges: false,
+    bonuses: [
+      { id: '6,6', bonus: 'BDW' },
+      { id: '6,0', bonus: 'BDL' },
+      { id: '6,12', bonus: 'BDL' },
+      { id: '0,6', bonus: 'BDL' },
+      { id: '12,6', bonus: 'BDL' },
+      { id: '0,0', bonus: 'BTW' },
+      { id: '0,12', bonus: 'BTW' },
+      { id: '12,0', bonus: 'BTW' },
+      { id: '12,12', bonus: 'BTW' }
+    ],
+    blacks: [
+      '1,1', '1,3', '1,5', '1,7', '1,9', '1,11',
+      '3,1', '3,3', '3,5', '3,7', '3,9', '3,11',
+      '5,1', '5,3', '5,5', '5,7', '5,9', '5,11',
+      '7,1', '7,3', '7,5', '7,7', '7,9', '7,11',
+      '9,1', '9,3', '9,5', '9,7', '9,9', '9,11',
+      '11,1', '11,3', '11,5', '11,7', '11,9', '11,11'
+    ],
+    round1Target: 120,
+    maxGlyphs: 7,
+    tilesToDraw: 15,
+    addEdge: (edge, row, col) => false,
+  }
+}

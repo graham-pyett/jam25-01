@@ -7,6 +7,7 @@ import auth from "../firebaseSetup/auth";
 import { useUser } from "../providers/UserProvider";
 import { firestore } from '../firebaseSetup/firebase';
 import { Dialog, DialogContent, DialogTitle, Typography } from "@mui/material";
+import { LAYOUTS } from '../upgrades';
 
 const LoginModal = ({ show, setShow }) => {
   const { user } = useUser();
@@ -35,7 +36,7 @@ const LoginModal = ({ show, setShow }) => {
               const userRef = doc(firestore, 'users', newUser.uid);
               getDoc(userRef).then((snap) => {
                 if (!snap.exists()) {
-                  setDoc(doc(firestore, 'users', newUser.uid), { email: newUser.email.toLowerCase(), uid: newUser.uid, name: newUser.displayName ?? '', didTour: false, didShopTour: false, savedGame: null });
+                  setDoc(doc(firestore, 'users', newUser.uid), { email: newUser.email.toLowerCase(), uid: newUser.uid, name: newUser.displayName ?? '', didTour: false, didShopTour: false, savedGame: null, layouts: Object.keys(LAYOUTS) });
                 }
               })
 

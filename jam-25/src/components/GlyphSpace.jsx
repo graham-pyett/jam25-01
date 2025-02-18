@@ -1,10 +1,10 @@
 import { useDroppable } from "@dnd-kit/core";
 import { Box } from "@mui/material";
 import React, { useMemo } from "react";
-import { useGameData } from "../providers/GameDataProvider";
+import { PHASES, useGameData } from "../providers/GameDataProvider";
 
 const GlyphSpace = ({ glyph, isGarbage = false, id }) => {
-  const { shopOpen } = useGameData();
+  const { phase } = useGameData();
   const { isOver, setNodeRef } = useDroppable({
     id: isGarbage ? 'garbage' : id,
     data: {
@@ -13,11 +13,11 @@ const GlyphSpace = ({ glyph, isGarbage = false, id }) => {
   });
 
   const color = useMemo(() => {
-    if (shopOpen && isOver) {
+    if (phase === PHASES.SHOPPING && isOver) {
       return 'lightblue';
     }
     return 'whitesmoke';
-  }, [shopOpen, isOver]);
+  }, [phase, isOver]);
 
   return (
     <Box id={id} ref={setNodeRef} sx={{ width: '50px', height: '50px', border: '1px solid lightgrey', position: 'relative', backgroundColor: color }}>

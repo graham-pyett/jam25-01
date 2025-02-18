@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DndContext, DragOverlay, useSensor, PointerSensor, useSensors } from "@dnd-kit/core";
 import Tour from 'reactour'
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, Typography, useMediaQuery } from '@mui/material';
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, IconButton, Typography, useMediaQuery } from '@mui/material';
 import MuiGrid from '@mui/material/Grid2';
 import ShareIcon from '@mui/icons-material/Share';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseIcon from '@mui/icons-material/Close';
 import Score from "../components/Score";
 import Grid from "../components/Grid";
 import Tray from "../components/Tray";
@@ -13,8 +16,8 @@ import { checkValidWord } from "../words";
 import InfoPanel from "../components/InfoPanel";
 import Submit from "../components/Submit";
 import BlankPicker from "../components/BlankPicker";
-import { calcTarget, useGameData } from "../providers/GameDataProvider";
-import { BONUSES, GLYPHS } from "../upgrades";
+import { calcTarget, PHASES, useGameData } from "../providers/GameDataProvider";
+import { BONUSES, GLYPHS, LAYOUTS } from "../upgrades";
 import { v4 } from "uuid";
 import InventoryItem from "../components/InventoryItem";
 import InventoryTile from "../components/InventoryTile";
@@ -70,8 +73,7 @@ const App = () => {
     setRoundOver: setGlobalRoundOver, 
     setTurnOver, turnOver, 
     setRetrieving, 
-    setSwapTiles, 
-    shopOpen, setShopOpen, 
+    setSwapTiles,
     activeGlyph, setActiveGlyph,
     gridSizeY, setGridSizeY,
     gridSizeX, setGridSizeX,
@@ -84,8 +86,11 @@ const App = () => {
     glyphs, setGlyphs,
     maxGlyphs, setMaxGlyphs,
     gameStarted, setGameStarted,
+    tilesToDraw, setTilesToDraw,
+    blacks, setBlacks,
+    layout, setLayout,
+    phase, setPhase,
     loadGame, clearGame, savedGame } = useGameData();
-  const tilesToDrawRef = useRef(13);
   const tilesOnBoard = useRef([]);
   const [allTiles, setAllTiles] = useState([]);
   const [bag, setBag] = useState(0);
@@ -105,9 +110,6 @@ const App = () => {
   const turnScores = useRef([]);
   const [totalScore, setTotalScore] = useState(0);
   const [turnScore, setTurnScore] = useState(null);
-  const [roundOver, setRoundOver] = useState(false);
-  const [gameOver, setGameOver] = useState(false);
-  const [placementOpen, setPlacementOpen] = useState(false);
   const [availableUpgrades, setAvailableUpgrades] = useState([]);
   const [availableUpgradeTiles, setAvailableUpgradeTiles] = useState([]);
   const [availableGlyphs, setAvailableGlyphs] = useState([]);
@@ -120,6 +122,10 @@ const App = () => {
   const [didStart, setDidStart] = useState(false);
   const [roundUpdated, setRoundUpdated] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [layoutPicker, setLayoutPicker] = useState(false);
+  const [shoppingReady, setShoppingReady] = useState(false);
+  const [placementReady, setPlacementReady] = useState(false);
+  const [inventoryBlacks, setInventoryBlacks] = useState([]);
 
   const signOutUser = useCallback(() => {
     signOut(auth);
@@ -209,7 +215,7 @@ const App = () => {
   const start = useCallback(() => {
     setRetrieving([]);
     tilesOnBoard.current = [];
-    const ttd = tilesToDrawRef.current + (getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.draws ?? 0), 0));
+    const ttd = tilesToDraw + (getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.draws ?? 0), 0));
     const newAllTiles = shuffle(tileLibrary).map((l) => <Tile key={l.id} letter={l} id={l.id} dealable />);
     const drawn = newAllTiles.slice(0, ttd);
     setBag(newAllTiles.length - ttd);
@@ -226,15 +232,15 @@ const App = () => {
     setTotalScore(0);
     setWords([[]])
     turnScores.current = [];
-    setTarget(calcTarget(round));
+    setTarget(calcTarget(round, layout));
     setGridArray(() => Array(gridSizeY).fill().map((_row, r) => Array(gridSizeX).fill().map((_col, c) => {
       const bonusSpace = bonusSpaces.find((b) => {
         const [row, col] = b.id.split(',').map((n) => parseInt(n));
         return row === r && col === c;
       });
-      return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
+      return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: blacks.includes(`${r},${c}`) };
     })));
-  }, [setRetrieving, getGlobalGlyphs, tileLibrary, setBagTiles, setDealing, setTarget, round, gridSizeY, gridSizeX, bonusSpaces]);
+  }, [setRetrieving, tilesToDraw, getGlobalGlyphs, tileLibrary, setBagTiles, setDealing, setTarget, round, layout, gridSizeY, gridSizeX, bonusSpaces, blacks]);
 
   const checkForWords = useCallback(() => {
     // find all words on the board
@@ -340,7 +346,7 @@ const App = () => {
       if (newTotalScore < target && currentTurnRef.current < turns) {
         await new Promise((resolve) => setTimeout(() => {
           setCurrentTurn((old) => old + 1);
-          const ttd = (tilesToDrawRef.current + getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.draws ?? 0), 0)) - trayArray.length - swapArray.length;
+          const ttd = (tilesToDraw + getGlobalGlyphs().reduce((acc, j) => acc + (j.props?.glyph?.global?.draws ?? 0), 0)) - trayArray.length - swapArray.length;
           const drawn = allTiles.slice(0, ttd);
           setBag(allTiles.length - ttd);
           const newTray = [...trayArray, ...swapArray, ...drawn];
@@ -374,10 +380,10 @@ const App = () => {
             setFixedTiles([]);
             setBlanks({});
             // setAllTiles(tileLibrary.current);
-            setRoundOver(true);
+            setPhase(PHASES.SUMMARY);
             setGlobalRoundOver(false);
           } else {
-            setGameOver(true);
+            setPhase(PHASES.GAMEOVER);
             clearGame();
             setGlobalRoundOver(false);
           }
@@ -385,7 +391,7 @@ const App = () => {
         }, 800));
         
       }
-  }, [clearGame, allTiles, bonusSpaces, checkForWords, getGlobalGlyphs, gridArray, score, setBagTiles, setBlanks, setDealing, setFixedTiles, setGlobalRoundOver, setRetrieving, setScoringTiles, setTurnOver, swapArray, target, totalScore, trayArray, turns]);
+  }, [setTurnOver, checkForWords, score, turns, totalScore, gridArray, setFixedTiles, target, getGlobalGlyphs, setScoringTiles, tilesToDraw, trayArray, swapArray, allTiles, setBagTiles, setDealing, bonusSpaces, setRetrieving, setGlobalRoundOver, setBlanks, setPhase, clearGame]);
 
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
@@ -539,6 +545,7 @@ const App = () => {
   }, [setInventory, setTileLibrary]);
 
   const handleDragInventoryEnd = useCallback((event) => {
+    let newInventoryBlacks = [...blacks];
     if (event.active.id === 'bomb') {
       if (event?.over?.id != null) {
         const found = event.collisions.map((c) => c.data?.droppableContainer?.data?.current).find((a) => a.accepts.includes('bomb'));
@@ -560,13 +567,21 @@ const App = () => {
       setGridSizeX(newGridX);
       const newBonusSpaces = bonusSpaces.map((b) => ({ ...b, id: `${b.id.split(',')[0]},${parseInt(b.id.split(',')[1]) + 1}` }));
       setBonusSpaces(newBonusSpaces);
+      const newBlacks = newInventoryBlacks.map((b) => `${parseInt(b.split(',')[0])},${b.split(',')[1] + 1}`);
       const newInventoryGridArray = Array(gridSizeY).fill().map((_row, r) => Array(newGridX).fill().map((_col, c) => {
         const bonusSpace = newBonusSpaces.find((b) => {
           const [row, col] = b.id.split(',').map((n) => parseInt(n));
           return row === r && col === c;
         });
-        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
+        if (c === 0) {
+          if (LAYOUTS[layout].addEdge('LEFT', r, c)) {
+            newBlacks.push(`${r},${c}`);
+          }
+          return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: LAYOUTS[layout].addEdge('LEFT', r, c) }
+        }
+        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: newBlacks.includes(`${r},${c}`) }
       }));
+      newInventoryBlacks = [...newBlacks];
       setInventoryGridArray(newInventoryGridArray);
     } else if (event.over?.id && event.over.id === 'right' && activeInventory.props.item.placement === 'edge') {
       const newGridX = gridSizeX + 1;
@@ -576,7 +591,13 @@ const App = () => {
           const [row, col] = b.id.split(',').map((n) => parseInt(n));
           return row === r && col === c;
         });
-        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
+        if (c === newGridX - 1) {
+          if (LAYOUTS[layout].addEdge('RIGHT', r, c)) {
+            newInventoryBlacks.push(`${r},${c}`);
+          }
+          return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: LAYOUTS[layout].addEdge('RIGHT', r, c) }
+        }
+        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: newInventoryBlacks.includes(`${r},${c}`) }
       }));
       setInventoryGridArray(newInventoryGridArray);
     } else if (event.over?.id && event.over.id === 'top' && activeInventory.props.item.placement === 'edge') {
@@ -584,13 +605,21 @@ const App = () => {
       setGridSizeY(newGridY);
       const newBonusSpaces = bonusSpaces.map((b) => ({ ...b, id: `${parseInt(b.id.split(',')[0]) + 1},${b.id.split(',')[1]}` }));
       setBonusSpaces(newBonusSpaces);
+      const newBlacks = newInventoryBlacks.map((b) => `${parseInt(b.split(',')[0]) + 1},${b.split(',')[1]}`);
       const newInventoryGridArray = Array(newGridY).fill().map((_row, r) => Array(gridSizeX).fill().map((_col, c) => {
         const bonusSpace = newBonusSpaces.find((b) => {
           const [row, col] = b.id.split(',').map((n) => parseInt(n));
           return row === r && col === c;
         });
-        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
+        if (r === 0) {
+          if (LAYOUTS[layout].addEdge('TOP', r, c)) {
+            newBlacks.push(`${r},${c}`);
+          }
+          return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: LAYOUTS[layout].addEdge('TOP', r, c) }
+        }
+        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: newBlacks.includes(`${r},${c}`) }
       }));
+      newInventoryBlacks = [...newBlacks];
       setInventoryGridArray(newInventoryGridArray);
     } else if (event.over?.id && event.over.id === 'bottom' && activeInventory.props.item.placement === 'edge') {
       const newGridY= gridSizeY + 1;
@@ -600,7 +629,13 @@ const App = () => {
           const [row, col] = b.id.split(',').map((n) => parseInt(n));
           return row === r && col === c;
         });
-        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
+        if (r === newGridY - 1) {
+          if (LAYOUTS[layout].addEdge('BOTTOM', r, c)) {
+            newInventoryBlacks.push(`${r},${c}`);
+          }
+          return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: LAYOUTS[layout].addEdge('BOTTOM', r, c) }
+        }
+        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: newInventoryBlacks.includes(`${r},${c}`) }
       }));
       setInventoryGridArray(newInventoryGridArray);
     } else if (event.over?.id && event.over.id !== 'inventory' && typeof event.over.id === 'string' && activeInventory.props.item.placement === 'board') {
@@ -615,7 +650,12 @@ const App = () => {
     } else {
       setInventoryItems((old) => [...old, activeInventory]);
     }
-  }, [activeInventory, handleUpgrade, gridSizeX, setGridSizeX, bonusSpaces, setBonusSpaces, gridSizeY, setGridSizeY]);
+    setInventoryBlacks(newInventoryBlacks);
+  }, [activeInventory, handleUpgrade, gridSizeX, setGridSizeX, bonusSpaces, setBonusSpaces, gridSizeY, blacks, layout, setGridSizeY]);
+
+  useEffect(() => {
+    setInventoryBlacks(blacks);
+  }, [blacks]);
 
 
   const handleBlank = useCallback((letter) => {
@@ -644,44 +684,51 @@ const App = () => {
 
   const handleOpenShop = useCallback(() => {
     setFunds((old) => getNewFunds().total + old)
-    setInventoryItems([...inventory]);
-    const newAvailableUpgrades = [];
-    const bonusesWithRarity = Object.keys(BONUSES).map((b) => Array(4 - BONUSES[b].rarity).fill({ ...BONUSES[b], key: b })).flat();
-    for (let i = 0; i < 2; i++) {
-      const keys = Object.keys(bonusesWithRarity);
-      const key = keys[Math.floor(Math.random() * keys.length)];
-      newAvailableUpgrades.push({ id: v4(), ...bonusesWithRarity[key] });
-    }
-    const newAvailableUpgradeTiles = [];
-    const bonuseLettersWithRarity = BONUS_LETTERS.map((b) => Array(4 - b.rarity).fill(b)).flat();
-    for (let i = 0; i < 3; i++) {
+    setPhase(PHASES.SHOPPING);
+    setShoppingReady(false);
+  }, [getNewFunds, setFunds, setPhase]);
+
+  useEffect(() => {
+    if (phase === PHASES.SHOPPING && !shoppingReady) {
+      
+      setInventoryItems([...inventory]);
+      const newAvailableUpgrades = [];
+      const bonusesWithRarity = Object.keys(BONUSES).filter((b) => b !== 'EDGE' || LAYOUTS[layout].edges).map((b) => Array(4 - BONUSES[b].rarity).fill({ ...BONUSES[b], key: b })).flat();
+      for (let i = 0; i < 2; i++) {
+        const keys = Object.keys(bonusesWithRarity);
+        const key = keys[Math.floor(Math.random() * keys.length)];
+        newAvailableUpgrades.push({ id: v4(), ...bonusesWithRarity[key] });
+      }
+      const newAvailableUpgradeTiles = [];
+      const bonuseLettersWithRarity = BONUS_LETTERS.map((b) => Array(4 - b.rarity).fill(b)).flat();
+      for (let i = 0; i < 3; i++) {
+        const keys = Object.keys(bonuseLettersWithRarity);
+        const key = keys[Math.floor(Math.random() * keys.length)];
+        newAvailableUpgradeTiles.push({ key, ...bonuseLettersWithRarity[key], price: bonuseLettersWithRarity[key].price ?? bonuseLettersWithRarity[key].value, id: v4() });
+      }
       const keys = Object.keys(bonuseLettersWithRarity);
       const key = keys[Math.floor(Math.random() * keys.length)];
-      newAvailableUpgradeTiles.push({ key, ...bonuseLettersWithRarity[key], price: bonuseLettersWithRarity[key].price ?? bonuseLettersWithRarity[key].value, id: v4() });
+      const filteredBonuses = bonusesWithRarity.filter((b) => b.placement === 'tile')
+      const bonusKeys = Object.keys(filteredBonuses);
+      const bonusKey = bonusKeys[Math.floor(Math.random() * bonusKeys.length)];
+      const selectedBonus = filteredBonuses[bonusKey];
+      const selectedLetter = bonuseLettersWithRarity[key];
+      newAvailableUpgradeTiles.push({ key, ...selectedBonus, ...selectedLetter, rarity: Math.min(Math.ceil((selectedBonus.rarity + selectedLetter.rarity) / 2), 3), value: (selectedBonus.adder ?? 0) + selectedLetter.value, name: `${selectedBonus.name} - ${selectedLetter.letter}`, price: Math.floor((selectedLetter.price ?? selectedLetter.value) - 2 + selectedBonus.price), id: v4() });
+      const newAvailableGlyphs = [];
+      for (let i = 0; i < 2; i++) {
+        const keys = Object.keys(GLYPHS);
+        const key = keys[Math.floor(Math.random() * keys.length)];
+        newAvailableGlyphs.push({ key, ...GLYPHS[key], id: v4() });
+      }
+      setAvailableUpgrades(newAvailableUpgrades)
+      setAvailableUpgradeTiles(newAvailableUpgradeTiles)
+      setAvailableGlyphs(newAvailableGlyphs);
+      setShoppingReady(true);
     }
-    const keys = Object.keys(bonuseLettersWithRarity);
-    const key = keys[Math.floor(Math.random() * keys.length)];
-    const filteredBonuses = bonusesWithRarity.filter((b) => b.placement === 'tile')
-    const bonusKeys = Object.keys(filteredBonuses);
-    const bonusKey = bonusKeys[Math.floor(Math.random() * bonusKeys.length)];
-    const selectedBonus = filteredBonuses[bonusKey];
-    const selectedLetter = bonuseLettersWithRarity[key];
-    newAvailableUpgradeTiles.push({ key, ...selectedBonus, ...selectedLetter, rarity: Math.min(Math.ceil((selectedBonus.rarity + selectedLetter.rarity) / 2), 3), value: (selectedBonus.adder ?? 0) + selectedLetter.value, name: `${selectedBonus.name} - ${selectedLetter.letter}`, price: Math.floor((selectedLetter.price ?? selectedLetter.value) - 2 + selectedBonus.price), id: v4() });
-    const newAvailableGlyphs = [];
-    for (let i = 0; i < 2; i++) {
-      const keys = Object.keys(GLYPHS);
-      const key = keys[Math.floor(Math.random() * keys.length)];
-      newAvailableGlyphs.push({ key, ...GLYPHS[key], id: v4() });
-    }
-    setAvailableUpgrades(newAvailableUpgrades)
-    setAvailableUpgradeTiles(newAvailableUpgradeTiles)
-    setAvailableGlyphs(newAvailableGlyphs);
-    setRoundOver(false);
-    setShopOpen(true);
-  }, [getNewFunds, inventory, setFunds, setShopOpen]);
+  }, [inventory, layout, phase, shoppingReady]);
   
   const handleNextRound = useCallback(() => {
-    setPlacementOpen(false);
+    setPhase(PHASES.PLAYING)
     const toRemove = [];
     inventory.forEach((i) => {
       const bonus = BONUSES[i.props.item.key];
@@ -706,13 +753,22 @@ const App = () => {
       }
     });
     setInventory((old) => old.filter((i) => !toRemove.includes(i.props.item.id)));
+    setBlacks(inventoryBlacks)
     setRound((old) => old + 1);
     setRoundUpdated(true);
-  }, [inventory, inventoryGridArray, possibleLetters, setBonusSpaces, setInventory, setRound]);
+  }, [inventory, inventoryBlacks, inventoryGridArray, possibleLetters, setBlacks, setBonusSpaces, setInventory, setPhase, setRound]);
 
   const handlePlacement = useCallback(() => {
-    setShopOpen(false);
-    if (inventory.length) {
+    setPlacementReady(false);
+    if (inventory.length) {      
+      setPhase(PHASES.PLACEMENT)
+    } else {
+      handleNextRound();
+    }
+  }, [inventory, setPhase, handleNextRound]);
+
+  useEffect(() => {
+    if (phase === PHASES.PLACEMENT && !placementReady) {
       setInventoryItems([...inventory]);
       setPossibleLetters(shuffle(tileLibrary).slice(0, 7).map((l) => <Tile key={l.id} letter={l} id={l.id} />));
       setInventoryGridArray(() => Array(gridSizeY).fill().map((_row, r) => Array(gridSizeX).fill().map((_col, c) => {
@@ -720,32 +776,28 @@ const App = () => {
           const [row, col] = b.id.split(',').map((n) => parseInt(n));
           return row === r && col === c;
         });
-        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null }
+        return { id: `${r},${c}`, tile: null, bonus: bonusSpace?.bonus ?? null, black: blacks.includes(`${r},${c}`)}
       })));
-      
-      setPlacementOpen(true);
-    } else {
-      handleNextRound();
+      setPlacementReady(true);
     }
-  }, [setShopOpen, inventory, tileLibrary, gridSizeY, gridSizeX, bonusSpaces, handleNextRound]);
+  }, [blacks, bonusSpaces, gridSizeX, gridSizeY, inventory, phase, placementReady, tileLibrary]);
 
   const handleNewGame = useCallback(() => {
-    const newGridSize = 7;
-    setGridSizeY(newGridSize);
-    setGridSizeY(newGridSize);
+    setGridSizeY(LAYOUTS[layout].gridSizeX);
+    setGridSizeY(LAYOUTS[layout].gridSizeY);
     setInventory([]);
-    tilesToDrawRef.current = 13;
-    setGameOver(false);
+    setTilesToDraw(LAYOUTS[layout].tilesToDraw)
+    setPhase(PHASES.PLAYING)
     setRound(1);
     setGlyphs([]);
-    setMaxGlyphs(5);
+    setMaxGlyphs(LAYOUTS[layout].maxGlyphs);
     setTileLibrary(getStarterLetters());
-    setBonusSpaces([{ id: `${Math.floor(newGridSize / 2)},${Math.floor(newGridSize / 2)}`, bonus: 'BDW' }]);
+    setBonusSpaces(LAYOUTS[layout].bonuses);
     setGameStarted(false);
     setFunds(3);
     turnScores.current = [];
     setGameStarted(true);
-  }, [setBonusSpaces, setFunds, setGameStarted, setGridSizeY, setInventory, setGlyphs, setMaxGlyphs, setRound, setTileLibrary]);
+  }, [setGridSizeY, layout, setInventory, setTilesToDraw, setPhase, setRound, setGlyphs, setMaxGlyphs, setTileLibrary, setBonusSpaces, setGameStarted, setFunds]);
 
   useEffect(() => {
     if (gameStarted && !didStart) {
@@ -870,7 +922,19 @@ const App = () => {
 
   const shouldTour = useMemo(() => !user?.didTour, [user]);
 
-  const shouldShopTour = useMemo(() => shopOpen && !user?.didShopTour, [shopOpen, user?.didShopTour]);
+  const shouldShopTour = useMemo(() => phase === PHASES.SHOPPING && !user?.didShopTour, [phase, user?.didShopTour]);
+
+  const handleNextLayout = useCallback(() => {
+    let currInd = Object.keys(LAYOUTS).findIndex((l) => l === layout);
+    const nextInd = currInd + 1 >= Object.keys(LAYOUTS).length ? 0 : currInd + 1;
+    setLayout(Object.keys(LAYOUTS)[nextInd]);
+  }, [layout, setLayout]);
+
+  const handlePrevLayout = useCallback(() => {
+    const currInd = Object.keys(LAYOUTS).findIndex((l) => l === layout);
+    const nextInd = currInd - 1 < 0 ? Object.keys(LAYOUTS).length - 1 : currInd - 1;
+    setLayout(Object.keys(LAYOUTS)[nextInd]);
+  }, [layout, setLayout]);
 
   const handleShare = useCallback(async () => {
     let url = document.location.href;
@@ -935,6 +999,7 @@ const App = () => {
                     <>
                       <Typography variant='overline' sx={{ textAlign: 'center' }}>Saved Game</Typography>
                       <Typography variant='body1' sx={{ textAlign: 'center' }}>Round: {savedGameAvailable.round}</Typography>
+                      <Typography variant='body2' sx={{ textAlign: 'center' }}>{LAYOUTS[savedGameAvailable.layout].name}</Typography>
                       <Box sx={{ mb: 1, display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
                         {
                           savedGameAvailable?.glyphs?.length ? Array(savedGameAvailable?.maxGlyphs).fill().map((_, i) => (
@@ -951,7 +1016,7 @@ const App = () => {
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, borderRadius: 4 }}>
                 <Typography variant='overline' sx={{ mt: 'auto', textAlign: 'center' }}>Start a new Game</Typography>
-                <Button sx={{ mt: 'auto' }} className="button" variant="contained" onClick={handleNewGame}>
+                <Button sx={{ mt: 'auto' }} className="button" variant="contained" onClick={() => setLayoutPicker(true)}>
                   New Game
                 </Button>
               </Box>
@@ -959,6 +1024,51 @@ const App = () => {
           </MuiGrid>
       </MuiGrid>
       <LoginModal show={loginOpen} setShow={setLoginOpen} />
+      <Dialog open={layoutPicker} onClose={() => setLayoutPicker(false)}>
+        <DialogTitle>New Game</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={() => setLayoutPicker(false)}
+          sx={(theme) => ({
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: theme.palette.grey[500],
+          })}
+        >
+          <CloseIcon />
+        </IconButton>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', position: 'relative', p: 2, m: matches ? 1 : 2 }}>
+            <Typography variant='overline' sx={{ textAlign: 'center', fontSize: matches ? 18 : 20 }}>Select a Layout</Typography>
+            <Typography variant="body1">Glyphs: {LAYOUTS[layout].maxGlyphs} - Tiles per turn: {LAYOUTS[layout].tilesToDraw}</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', mt: 2 }}>
+              {
+                Array(LAYOUTS[layout].gridSizeY).fill().map((_, i) => (
+                  <Box key={i} sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  {
+                    Array(LAYOUTS[layout].gridSizeX).fill().map((_, j) => {
+                      const id = `${i},${j}`;
+                      return LAYOUTS[layout].blacks.includes(id) ? <Box key={id} sx={{ width: 15, height: 15, border: '1px solid rgba(0,0,0,0)', backgroundColor: 'rgba(0,0,0,0)' }} /> : <Box key={id} sx={{ height: 15, width: 15, border: '1px solid black', backgroundColor: 'aliceblue' }} />
+                    })
+                  }
+                  </Box>
+                ))
+              }
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', minWidth: 400, mt: 2 }}>
+              <Button variant="contained" className="button" sx={{ mr: 'auto' }} onClick={handlePrevLayout}><ChevronLeftIcon /></Button>
+              <Typography variant="h6">{LAYOUTS[layout].name}</Typography>
+              <Button variant="contained" className="button" sx={{ ml: 'auto' }} onClick={handleNextLayout}><ChevronRightIcon /></Button>
+            </Box>
+          </Box>
+          <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
+            <Button sx={{ mt: 'auto' }} className="button" variant="contained" onClick={handleNewGame}>
+              Start
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
     );
   }
@@ -1025,27 +1135,27 @@ const App = () => {
           </Box>
         </DialogContent>
       </Dialog>
-      <Dialog open={roundOver}>
+      <Dialog open={phase === PHASES.SUMMARY}>
         <DialogTitle>Round Over</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Box sx={{ fontSize: '24px', mt: 2 }}>Round {round} Defeated!</Box>
-            <Box sx={{ fontSize: '24px', mt: 2, color: '#11adab' }}>Total Score: {totalScore}/{target}</Box>
+            <Box sx={{ mt: 2 }}><Typography variant="h5">Round {round} Defeated!</Typography></Box>
+            <Box sx={{ mt: 2, color: '#11adab' }}><Typography variant="h5">Total Score: {totalScore}/{target}</Typography></Box>
       
-              <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Money Earned:</span><span>+${getNewFunds().total}</span></Box>
+              <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Money Earned:</Typography><Typography variant="body2">+${getNewFunds().total}</Typography></Box>
               <Divider />
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Base:</span><span>+${getNewFunds().base}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Remaining Turns:</span><span>+${getNewFunds().turns}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Remaining Swaps:</span><span>+${getNewFunds().swaps}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Word bonus:</span><span>+${getNewFunds().words}</span></Box>
-              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><span>Interest:</span><span>+${getNewFunds().interest}</span></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Base:</Typography><Typography variant="body2">+${getNewFunds().base}</Typography></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Remaining Turns:</Typography><Typography variant="body2">+${getNewFunds().turns}</Typography></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Remaining Swaps:</Typography><Typography variant="body2">+${getNewFunds().swaps}</Typography></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Word bonus:</Typography><Typography variant="body2">+${getNewFunds().words}</Typography></Box>
+              <Box sx={{  width: '100%', fontSize: '16px', mt: 1, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Interest:</Typography><Typography variant="body2">+${getNewFunds().interest}</Typography></Box>
           </Box>
           <Box sx={{ mt: 2, width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
             <Button className="button" variant="contained" onClick={handleOpenShop}>Open Shop</Button>
           </Box>
         </DialogContent>
       </Dialog>
-      <Dialog open={shopOpen}>
+      <Dialog open={phase === PHASES.SHOPPING}>
         <DialogTitle>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
             <Typography variant='h5'>Shop!</Typography>
@@ -1152,7 +1262,7 @@ const App = () => {
           <Button className="button" variant="contained" onClick={handlePlacement}>{inventory.length ? 'Continue' : 'Next Round'}</Button>
         </Box>
       </Dialog>
-      <Dialog open={placementOpen}>
+      <Dialog open={phase === PHASES.PLACEMENT}>
         <DialogTitle>
           <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
             <Typography variant='h5'>Shop!</Typography>
@@ -1178,13 +1288,13 @@ const App = () => {
                 <Box sx={{ position: 'absolute', top: 0, right: 0, width: 50, height: 50, borderRadius: 2, border: '1px solid slategrey', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, backgroungColor: 'whitesmoke' }}>
                   <Bomb />
                 </Box>
-                <Edge side="top" />
+                { LAYOUTS[layout].edges && LAYOUTS[layout].edges.includes('TOP') ? <Edge side="top" /> : null}
                 <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                  <Edge side="left" />
+                { LAYOUTS[layout].edges && LAYOUTS[layout].edges.includes('LEFT') ? <Edge side="left" /> : null}
                   <Grid gridArray={inventoryGridArray} inventory />
-                  <Edge side="right" />
+                  { LAYOUTS[layout].edges && LAYOUTS[layout].edges.includes('RIGHT') ? <Edge side="right" /> : null}
                 </Box>
-                <Edge side="bottom" />
+                { LAYOUTS[layout].edges && LAYOUTS[layout].edges.includes('BOTTOM') ? <Edge side="bottom" /> : null}
               </Box>
           </DndContext>
         </DialogContent>
@@ -1192,7 +1302,7 @@ const App = () => {
             <Button className="button" variant="contained" onClick={handleNextRound}>Next Round</Button>
           </Box>
       </Dialog>
-      <Dialog open={gameOver}>
+      <Dialog open={phase === PHASES.GAMEOVER}>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ fontSize: '24px', mt: 2 }}>Game Over</Box>
@@ -1200,13 +1310,13 @@ const App = () => {
             <Box sx={{ fontSize: '24px', mt: 2, color: '#8a1e39' }}>Total Score: {totalScore}/{target}</Box>
             <Box sx={{ mt: 2 }}>
               { navigator.share ? (<Button className="button" variant="contained" sx={{ mr: 1 }} onClick={handleShare}><ShareIcon /> Share</Button>) : null }
-              <Button className="button" variant="contained" onClick={() => setGameStarted(false)}>Start Over</Button>
+              <Button className="button" variant="contained" onClick={() => { setPhase(PHASES.PREGAME); setGameStarted(false); }}>Start Over</Button>
             </Box>
           </Box>
         </DialogContent>
       </Dialog>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragMove={handleDragMove}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '300px' : undefined }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: matches ? '200px' : "250px", mb: matches ? '300px' : '250px' }}>
           <BlankPicker open={!!blankPickerOpen} handleClick={handleBlank} />
           {
             glyphs?.length > 0 && (

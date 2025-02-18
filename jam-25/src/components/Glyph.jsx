@@ -1,14 +1,14 @@
 import { Box, ClickAwayListener, Tooltip, Typography } from "@mui/material";
 import React, { useMemo, useState } from "react";
-import { useGameData } from "../providers/GameDataProvider";
+import { PHASES, useGameData } from "../providers/GameDataProvider";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 const Glyph = ({ sx, glyph, id }) => {
-  const { scoringTiles, shopOpen, activeGlyph } = useGameData();
+  const { scoringTiles, phase, activeGlyph } = useGameData();
   const scoringTile = useMemo(() => scoringTiles?.find((t) => t.id === id) ?? {}, [id, scoringTiles]);
   const { setNodeRef, attributes, listeners } = useDraggable({
     id,
-    disabled: !shopOpen,
+    disabled: phase !== PHASES.SHOPPING,
     data: { type: 'glyph' }
   });
   const { attributes: dropLeftAttr, listeners: dropLeftList, setNodeRef: setNodeRefDropLeft } = useDroppable({ id: `${id}-left`, data: { accepts: 'glyph' } });
@@ -17,7 +17,7 @@ const Glyph = ({ sx, glyph, id }) => {
 
   return (
     <Box
-      className={[shopOpen ? 'glyph-hover' : '', 'draggable'].join(' ')}
+      className={[phase === PHASES.SHOPPING ? 'glyph-hover' : '', 'draggable'].join(' ')}
       id={id}
       ref={setNodeRef}
       {...attributes}

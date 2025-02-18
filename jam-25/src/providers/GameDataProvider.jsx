@@ -5,21 +5,32 @@ import Glyph from "../components/Glyph";
 import { doc, setDoc } from "firebase/firestore";
 import { firestore } from "../firebaseSetup/firebase";
 import { useUser } from "./UserProvider";
+import { GLYPHS, LAYOUTS } from "../upgrades";
 
 const GameDataContext = createContext(null);
 
-export const calcTarget = (round) => {
-  return Math.round(
+export const PHASES = {
+  'PREGAME': 'PREGAME',
+  'PLAYING': 'PLAYING',
+  'SUMMARY': 'SUMMARY',
+  'SHOPPING': 'SHOPPING',
+  'PLACEMENT': 'PLACEMENT',
+  'GAMEOVER': 'GAMEOVER',
+}
+
+export const calcTarget = (round, layout) => {
+  return (Math.round(
     (
       Math.pow((round * 10), 1.85)
       + 350
     )
     / 100
-  ) * 10;
+  ) * 10) - 40 + (LAYOUTS[layout].round1Target ?? 0);
 }
 
 const GameDataProvider = ({ children }) => {
   const { user } = useUser();
+  const [layout, setLayout] = useState('BASE');
   const [blanks, setBlanks] = useState({});
   const [fixedTiles, setFixedTiles] = useState([]);
   const [scoringTiles, setScoringTiles] = useState([]);
@@ -31,19 +42,32 @@ const GameDataProvider = ({ children }) => {
   const turnOffDealing = useRef(null);
   const [roundOver, setRoundOver] = useState(false);
   const [turnOver, setTurnOver] = useState(true);
-  const [shopOpen, setShopOpen] = useState(false);
   const [activeGlyph, setActiveGlyph] = useState(null);
-  const [gridSizeY, setGridSizeY] = useState(7);
-  const [gridSizeX, setGridSizeX] = useState(7);
+  const [gridSizeY, setGridSizeY] = useState(LAYOUTS[layout].gridSizeY);
+  const [gridSizeX, setGridSizeX] = useState(LAYOUTS[layout].gridSizeX);
   const [tileLibrary, setTileLibrary] = useState(getStarterLetters());
   const [funds, setFunds] = useState(3);
-  const [target, setTarget] = useState(calcTarget(0));
-  const [bonusSpaces, setBonusSpaces] = useState([{ id: `${Math.floor(gridSizeY / 2)},${Math.floor(gridSizeX / 2)}`, bonus: 'BDW' }]);
+  const [target, setTarget] = useState(calcTarget(0, layout));
+  const [bonusSpaces, setBonusSpaces] = useState(LAYOUTS[layout].bonusSpaces);
   const [round, setRound] = useState(0);
   const [inventory, setInventory] = useState([]);
   const [glyphs, setGlyphs] = useState([]); 
-  const [maxGlyphs, setMaxGlyphs] = useState(5);
+  const [maxGlyphs, setMaxGlyphs] = useState(LAYOUTS[layout].maxGlyphs);
   const [gameStarted, setGameStarted] = useState(false);
+  const [tilesToDraw, setTilesToDraw] = useState(LAYOUTS[layout].tilesToDraw);
+  const [blacks, setBlacks] = useState(LAYOUTS[layout].blacks);
+  const [phase, setPhase] = useState(PHASES.PREGAME)
+
+  useEffect(() => {
+    if (phase === PHASES.PREGAME) {
+      setGridSizeX(LAYOUTS[layout].gridSizeX);
+      setGridSizeY(LAYOUTS[layout].gridSizeY);
+      setMaxGlyphs(LAYOUTS[layout].maxGlyphs);
+      setBonusSpaces(LAYOUTS[layout].bonuses);
+      setTilesToDraw(LAYOUTS[layout].tilesToDraw);
+      setBlacks(LAYOUTS[layout].blacks);
+    }
+  }, [layout, phase]);
 
   useEffect(() => {
     if (dealing) {
@@ -106,16 +130,19 @@ const GameDataProvider = ({ children }) => {
         target,
         bonusSpaces,
         round,
-        inventory: inventory.map((i) => i.props.item),
-        glyphs: glyphs.map((j) => j.props.glyph),
+        inventory: inventory?.map((i) => i.props?.item) ?? [],
+        glyphs: glyphs?.map((j) => j.props?.glyph?.name) ?? [],
         maxGlyphs,
+        layout,
+        phase,
+        blacks,
       });
       localStorage.setItem('gameData', newGame);
       if (user?.uid) {
         setDoc(doc(firestore, 'users', user.uid), { ...user, savedGame: newGame });
       }
     }
-  }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, user]);
+  }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, user, layout, phase, blacks]);
 
   const savedGame = useCallback(() => {
     const data = JSON.parse(localStorage.getItem('gameData')) ?? null;
@@ -133,7 +160,7 @@ const GameDataProvider = ({ children }) => {
     }
     if (game) {
       game.inventory = game?.inventory?.map((i) => <InventoryItem key={i.id} item={i} />) ?? [];
-      game.glyphs = game?.glyphs?.map((j) => <Glyph glyph={j} id={j.id} />) ?? [];
+      game.glyphs = game?.glyphs?.map((j) => <Glyph glyph={GLYPHS.find((g) => g.name === j)} id={GLYPHS.find((g) => g.name === j)?.id} />) ?? [];
     }
     return game;
   }, [user]);
@@ -158,6 +185,9 @@ const GameDataProvider = ({ children }) => {
       setInventory(data.inventory ?? []);
       setGlyphs(data.glyphs ?? []);
       setMaxGlyphs(data.maxGlyphs ?? 5);
+      setLayout(data.layout ?? 'BASE');
+      setPhase(data.phase ?? PHASES.PREGAME);
+      setBlacks(data.blacks ?? [])
       setTimeout(() => {
         setGameStarted(true);
       }, 500);
@@ -175,7 +205,6 @@ const GameDataProvider = ({ children }) => {
       turnOver, setTurnOver,
       retrieving, setRetrieving,
       swapTiles, setSwapTiles,
-      shopOpen, setShopOpen,
       activeGlyph, setActiveGlyph,
       gridSizeY, setGridSizeY,
       gridSizeX, setGridSizeX,
@@ -188,11 +217,15 @@ const GameDataProvider = ({ children }) => {
       glyphs, setGlyphs,
       maxGlyphs, setMaxGlyphs,
       gameStarted, setGameStarted,
+      tilesToDraw, setTilesToDraw,
+      phase, setPhase,
+      blacks, setBlacks,
+      layout, setLayout,
       loadGame,
       savedGame,
       clearGame,
     };
-  }, [blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, shopOpen, activeGlyph, gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, loadGame, savedGame, clearGame]);
+  }, [tilesToDraw, phase, layout, blacks, blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, activeGlyph, gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, loadGame, savedGame, clearGame]);
 
   return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
 };
