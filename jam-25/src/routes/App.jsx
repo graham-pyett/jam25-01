@@ -90,6 +90,7 @@ const App = () => {
     blacks, setBlacks,
     layout, setLayout,
     phase, setPhase,
+    totalScore: globalTotalScore, setTotalScore: setGlobalTotalScore,
     loadGame, clearGame, savedGame } = useGameData();
   const tilesOnBoard = useRef([]);
   const [allTiles, setAllTiles] = useState([]);
@@ -109,6 +110,7 @@ const App = () => {
   const [blankPickerOpen, setBlankPickerOpen] = useState(false);
   const turnScores = useRef([]);
   const [totalScore, setTotalScore] = useState(0);
+  const [tempTotalScore, setTempTotalScore] = useState(0);
   const [turnScore, setTurnScore] = useState(null);
   const [availableUpgrades, setAvailableUpgrades] = useState([]);
   const [availableUpgradeTiles, setAvailableUpgradeTiles] = useState([]);
@@ -230,6 +232,7 @@ const App = () => {
     currentTurnRef.current = 0;
     setCurrentTurn(1)
     setTotalScore(0);
+    setTempTotalScore(0);
     setWords([[]])
     turnScores.current = [];
     setTarget(calcTarget(round, layout));
@@ -330,7 +333,9 @@ const App = () => {
     setWords((old) => { old[thisTurn] = newWords; return old; })
     await new Promise((resolve) => setTimeout(() => {
       setTotalScore(newTotalScore);
+      setTempTotalScore(newTotalScore);
       setTurnScore(null);
+      setGlobalTotalScore((old) => old + newTurnScore);
       resolve();
     }, 1500));
     const newFixedTiles = [];
@@ -341,6 +346,7 @@ const App = () => {
       }
     }));
     setFixedTiles(newFixedTiles);
+
 
     currentTurnRef.current++;
       if (newTotalScore < target && currentTurnRef.current < turns) {
@@ -382,16 +388,18 @@ const App = () => {
             // setAllTiles(tileLibrary.current);
             setPhase(PHASES.SUMMARY);
             setGlobalRoundOver(false);
+            setTotalScore(0);
           } else {
             setPhase(PHASES.GAMEOVER);
             clearGame();
             setGlobalRoundOver(false);
+            setTotalScore(0);
           }
           resolve();
         }, 800));
         
       }
-  }, [setTurnOver, checkForWords, score, turns, totalScore, gridArray, setFixedTiles, target, getGlobalGlyphs, setScoringTiles, tilesToDraw, trayArray, swapArray, allTiles, setBagTiles, setDealing, bonusSpaces, setRetrieving, setGlobalRoundOver, setBlanks, setPhase, clearGame]);
+  }, [setTurnOver, checkForWords, score, turns, totalScore, gridArray, setFixedTiles, setGlobalTotalScore, target, getGlobalGlyphs, setScoringTiles, tilesToDraw, trayArray, swapArray, allTiles, setBagTiles, setDealing, bonusSpaces, setRetrieving, setGlobalRoundOver, setBlanks, setPhase, clearGame]);
 
   const handleDragStart = useCallback((event) => {
     const newActiveTile = availableTiles.find((t) => t.props.id === event.active.id);
@@ -783,6 +791,7 @@ const App = () => {
   }, [blacks, bonusSpaces, gridSizeX, gridSizeY, inventory, phase, placementReady, tileLibrary]);
 
   const handleNewGame = useCallback(() => {
+    setGlobalTotalScore(0);
     setGridSizeY(LAYOUTS[layout].gridSizeX);
     setGridSizeY(LAYOUTS[layout].gridSizeY);
     setInventory([]);
@@ -797,7 +806,7 @@ const App = () => {
     setFunds(3);
     turnScores.current = [];
     setGameStarted(true);
-  }, [setGridSizeY, layout, setInventory, setTilesToDraw, setPhase, setRound, setGlyphs, setMaxGlyphs, setTileLibrary, setBonusSpaces, setGameStarted, setFunds]);
+  }, [setGlobalTotalScore, setGridSizeY, layout, setInventory, setTilesToDraw, setPhase, setRound, setGlyphs, setMaxGlyphs, setTileLibrary, setBonusSpaces, setGameStarted, setFunds]);
 
   useEffect(() => {
     if (gameStarted && !didStart) {
@@ -938,7 +947,7 @@ const App = () => {
 
   const handleShare = useCallback(async () => {
     let url = document.location.href;
-    const shareDetails = { title: 'Glyphoria', text: `🟫 I beat ${round - 1} rounds with ${totalScore} points using ${words.flat().length} words on Glyphoria! 🟫 ${url}`  }
+    const shareDetails = { title: 'Glyphoria', text: `🟫 I beat ${round - 1} rounds with ${tempTotalScore} points using ${words.flat().length} words on Glyphoria! 🟫 ${url}`  }
     if (navigator.share) {
       try {
         await navigator.share(shareDetails);
@@ -946,7 +955,7 @@ const App = () => {
         console.error(error);
       }
     }
-  }, [round, totalScore, words]);
+  }, [round, tempTotalScore, words]);
 
   const getAllTiles = useCallback(() => {
     return [...tileLibrary].sort((a, b) => a.letter.localeCompare(b.letter));
@@ -999,6 +1008,7 @@ const App = () => {
                     <>
                       <Typography variant='overline' sx={{ textAlign: 'center' }}>Saved Game</Typography>
                       <Typography variant='body1' sx={{ textAlign: 'center' }}>Round: {savedGameAvailable.round}</Typography>
+                      <Typography variant='body2' sx={{ textAlign: 'center' }}>Score: <span style={{ color: '#11adab' }}>{savedGameAvailable.totalScore}</span></Typography>
                       <Typography variant='body2' sx={{ textAlign: 'center' }}>{LAYOUTS[savedGameAvailable.layout].name}</Typography>
                       <Box sx={{ mb: 1, display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', p: 2, border: '1px solid ghostwhite', backgroundColor: '#564c59', borderRadius: '8px', zIndex: 5 }}>
                         {
@@ -1140,7 +1150,7 @@ const App = () => {
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ mt: 2 }}><Typography variant="h5">Round {round} Defeated!</Typography></Box>
-            <Box sx={{ mt: 2, color: '#11adab' }}><Typography variant="h5">Total Score: {totalScore}/{target}</Typography></Box>
+            <Box sx={{ mt: 2, color: '#11adab' }}><Typography variant="h5">Total Score: {tempTotalScore}/{target}</Typography></Box>
       
               <Box sx={{ width: '100%', fontSize: '24px', mt: 2, color: 'goldenrod', display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">Money Earned:</Typography><Typography variant="body2">+${getNewFunds().total}</Typography></Box>
               <Divider />
@@ -1307,7 +1317,8 @@ const App = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Box sx={{ fontSize: '24px', mt: 2 }}>Game Over</Box>
             <Box sx={{ fontSize: '24px', mt: 2 }}>You beat <span style={{ fontFamily: 'Orbitron', color: '#11adab' }}>{round - 1}</span> rounds</Box>
-            <Box sx={{ fontSize: '24px', mt: 2, color: '#8a1e39' }}>Total Score: {totalScore}/{target}</Box>
+            <Box sx={{ fontSize: '24px', mt: 2, color: '#8a1e39' }}>Round Score: {tempTotalScore}/{target}</Box>
+            <Box sx={{ fontSize: '22px', mt: 2, color: '#8a1e39' }}>Total Score: {globalTotalScore}</Box>
             <Box sx={{ mt: 2 }}>
               { navigator.share ? (<Button className="button" variant="contained" sx={{ mr: 1 }} onClick={handleShare}><ShareIcon /> Share</Button>) : null }
               <Button className="button" variant="contained" onClick={() => { setPhase(PHASES.PREGAME); setGameStarted(false); }}>Start Over</Button>

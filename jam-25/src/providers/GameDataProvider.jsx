@@ -57,6 +57,7 @@ const GameDataProvider = ({ children }) => {
   const [tilesToDraw, setTilesToDraw] = useState(LAYOUTS[layout].tilesToDraw);
   const [blacks, setBlacks] = useState(LAYOUTS[layout].blacks);
   const [phase, setPhase] = useState(PHASES.PREGAME)
+  const [totalScore, setTotalScore] = useState(0);
 
   useEffect(() => {
     if (phase === PHASES.PREGAME) {
@@ -136,13 +137,14 @@ const GameDataProvider = ({ children }) => {
         layout,
         phase,
         blacks,
+        totalScore,
       });
       localStorage.setItem('gameData', newGame);
       if (user?.uid) {
         setDoc(doc(firestore, 'users', user.uid), { ...user, savedGame: newGame });
       }
     }
-  }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, user, layout, phase, blacks]);
+  }, [gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, user, layout, phase, blacks, totalScore]);
 
   const savedGame = useCallback(() => {
     const data = JSON.parse(localStorage.getItem('gameData')) ?? null;
@@ -162,7 +164,7 @@ const GameDataProvider = ({ children }) => {
       game.inventory = game?.inventory?.map((i) => <InventoryItem key={i.id} item={i} />) ?? [];
       game.glyphs = game?.glyphs?.map((j) => <Glyph glyph={GLYPHS.find((g) => g.name === j)} id={GLYPHS.find((g) => g.name === j)?.id} />) ?? [];
     }
-    return game;
+    return game?.phase !== PHASES.GAMEOVER ? game : null;
   }, [user]);
 
   const clearGame = useCallback(() => {
@@ -188,6 +190,7 @@ const GameDataProvider = ({ children }) => {
       setLayout(data.layout ?? 'BASE');
       setPhase(data.phase ?? PHASES.PREGAME);
       setBlacks(data.blacks ?? [])
+      setTotalScore(data.totalScore ?? 0)
       setTimeout(() => {
         setGameStarted(true);
       }, 500);
@@ -221,11 +224,12 @@ const GameDataProvider = ({ children }) => {
       phase, setPhase,
       blacks, setBlacks,
       layout, setLayout,
+      totalScore, setTotalScore,
       loadGame,
       savedGame,
       clearGame,
     };
-  }, [tilesToDraw, phase, layout, blacks, blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, activeGlyph, gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, loadGame, savedGame, clearGame]);
+  }, [tilesToDraw, totalScore, phase, layout, blacks, blanks, fixedTiles, scoringTiles, bagTiles, dealing, roundOver, turnOver, retrieving, swapTiles, activeGlyph, gridSizeY, gridSizeX, tileLibrary, funds, target, bonusSpaces, round, inventory, glyphs, maxGlyphs, gameStarted, loadGame, savedGame, clearGame]);
 
   return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
 };

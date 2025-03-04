@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import './index.css';
 
 import reportWebVitals from './reportWebVitals';
@@ -14,6 +14,10 @@ const router = createBrowserRouter([
     path: '/',
     element: <App />,
   },
+  {
+    path: '*',
+    element: <Navigate to="/" />,
+  }
 ]);
 
 const theme = createTheme({
